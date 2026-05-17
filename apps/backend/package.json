@@ -21,9 +21,13 @@
     "ioredis": "^5.4.1",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
+    "prisma": "^6.8.0",
     "socket.io": "^4.8.0",
     "uuid": "^10.0.0",
     "zod": "^3.24.0"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -33,7 +37,6 @@
     "@types/multer": "^1.4.12",
     "@types/node": "^22.0.0",
     "@types/uuid": "^10.0.0",
-    "prisma": "^6.8.0",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.5.0"
   }
