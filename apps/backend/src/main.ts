@@ -8,8 +8,10 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 
 // Load env
-dotenv.config(); // Standard load for Render/Cloud environments
-dotenv.config({ path: '../../.env' }); // Fallback for local monorepo setup
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config(); // Standard load for local environments
+  dotenv.config({ path: '../../.env' }); // Fallback for local monorepo setup
+}
 
 import { authenticateUser, serializeUser } from './modules/auth';
 import { authMiddleware, adminMiddleware, AuthRequest } from './middleware/auth';
