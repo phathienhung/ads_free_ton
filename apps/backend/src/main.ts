@@ -3,6 +3,8 @@ import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
+import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 
 // Load env
@@ -81,7 +83,6 @@ app.post('/api/auth/dev-login', async (req: express.Request, res: express.Respon
     });
 
     if (!user) {
-      const crypto = await import('crypto');
       user = await prisma.user.create({
         data: {
           telegramId: BigInt(telegramId || 123456789),
@@ -94,8 +95,7 @@ app.post('/api/auth/dev-login', async (req: express.Request, res: express.Respon
       });
     }
 
-    const jwt = await import('jsonwebtoken');
-    const accessToken = jwt.default.sign(
+    const accessToken = jwt.sign(
       { userId: user.id, telegramId: user.telegramId.toString(), role: user.role },
       process.env.JWT_SECRET || 'change-me',
       { expiresIn: '24h' }
