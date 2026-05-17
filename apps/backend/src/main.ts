@@ -130,7 +130,7 @@ app.get('/api/campaigns', authMiddleware, async (req: AuthRequest, res) => {
 
 app.get('/api/campaigns/:id', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const campaign = await getCampaignById(req.params.id);
+    const campaign = await getCampaignById(req.params.id as string);
     res.json(campaign);
   } catch (err: any) {
     res.status(404).json({ error: err.message });
@@ -163,7 +163,7 @@ app.post('/api/tasks/:campaignId/start', authMiddleware, async (req: AuthRequest
   try {
     const ip = req.ip || req.socket.remoteAddress;
     const ua = req.headers['user-agent'];
-    const result = await startTask(req.userId!, req.params.campaignId, ip, ua);
+    const result = await startTask(req.userId!, req.params.campaignId as string, ip, ua);
     res.json(result);
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -172,7 +172,7 @@ app.post('/api/tasks/:campaignId/start', authMiddleware, async (req: AuthRequest
 
 app.post('/api/tasks/:campaignId/complete', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const result = await completeTask(req.userId!, req.params.campaignId);
+    const result = await completeTask(req.userId!, req.params.campaignId as string);
     // Emit realtime reward event
     io.to(req.userId!).emit('reward', result);
     res.json(result);
@@ -252,7 +252,7 @@ app.get('/api/daily-tasks', authMiddleware, async (req: AuthRequest, res) => {
 
 app.post('/api/daily-tasks/:id/claim', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const result = await claimDailyTask(req.userId!, req.params.id);
+    const result = await claimDailyTask(req.userId!, req.params.id as string);
     res.json(result);
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -310,7 +310,7 @@ app.get('/api/admin/users', authMiddleware, adminMiddleware, async (req, res) =>
 
 app.post('/api/admin/users/:id/ban', authMiddleware, adminMiddleware, async (req: AuthRequest, res) => {
   try {
-    const result = await toggleBanUser(req.params.id, req.body.ban, req.body.reason, req.userId);
+    const result = await toggleBanUser(req.params.id as string, req.body.ban, req.body.reason, req.userId);
     res.json(result);
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -330,7 +330,7 @@ app.get('/api/admin/campaigns', authMiddleware, adminMiddleware, async (req, res
 
 app.post('/api/admin/campaigns/:id/review', authMiddleware, adminMiddleware, async (req: AuthRequest, res) => {
   try {
-    const result = await reviewCampaign(req.params.id, req.body.status, req.userId!);
+    const result = await reviewCampaign(req.params.id as string, req.body.status, req.userId!);
     res.json(result);
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -349,7 +349,7 @@ app.get('/api/admin/withdrawals', authMiddleware, adminMiddleware, async (req, r
 
 app.post('/api/admin/withdrawals/:id/process', authMiddleware, adminMiddleware, async (req: AuthRequest, res) => {
   try {
-    const result = await processWithdrawal(req.params.id, req.body.status, req.userId!, req.body.tonTxHash);
+    const result = await processWithdrawal(req.params.id as string, req.body.status, req.userId!, req.body.tonTxHash);
     res.json(result);
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -380,9 +380,11 @@ io.on('connection', (socket) => {
 });
 
 // ==================== START SERVER ====================
-httpServer.listen(PORT, () => {
-  console.log(`🚀 AdsFree API server running on http://localhost:${PORT}`);
-  console.log(`📡 WebSocket ready`);
-});
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  httpServer.listen(PORT, () => {
+    console.log(`🚀 AdsFree API server running on http://localhost:${PORT}`);
+    console.log(`📡 WebSocket ready (Local/Dev only)`);
+  });
+}
 
-export { app, io };
+export default app;
