@@ -4,11 +4,12 @@
   "private": true,
   "scripts": {
     "start:dev": "ts-node-dev --respawn --transpile-only src/main.ts",
-    "db:push": "prisma db push",
-    "db:generate": "prisma generate",
-    "db:studio": "prisma studio",
-    "postinstall": "prisma generate",
-    "vercel-build": "prisma generate"
+    "db:push": "prisma db push --schema=./prisma/schema.prisma",
+    "db:generate": "prisma generate --schema=./prisma/schema.prisma",
+    "db:studio": "prisma studio --schema=./prisma/schema.prisma",
+    "postinstall": "prisma generate --schema=./prisma/schema.prisma",
+    "vercel-build": "prisma generate --schema=./prisma/schema.prisma",
+    "build": "echo 'Build skipped (using runtime compilation)'"
   },
   "dependencies": {
     "@prisma/client": "^6.8.0",
