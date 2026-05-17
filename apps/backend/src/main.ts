@@ -4,8 +4,9 @@ import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import dotenv from 'dotenv';
 
-// Load env from project root
-dotenv.config({ path: '../../.env' });
+// Load env
+dotenv.config(); // Standard load for Render/Cloud environments
+dotenv.config({ path: '../../.env' }); // Fallback for local monorepo setup
 
 import { authenticateUser, serializeUser } from './modules/auth';
 import { authMiddleware, adminMiddleware, AuthRequest } from './middleware/auth';
@@ -36,7 +37,7 @@ const io = new SocketIOServer(httpServer, {
   cors: { origin: '*', methods: ['GET', 'POST'] },
 });
 
-const PORT = process.env.BACKEND_PORT || 3001;
+const PORT = process.env.PORT || process.env.BACKEND_PORT || 3001;
 
 // Middleware
 app.use(cors());
