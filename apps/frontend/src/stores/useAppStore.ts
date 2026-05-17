@@ -66,8 +66,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       } else {
         set({ isLoading: false });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Login error:', err);
+      alert(`Login failed: ${err.message || 'Network error (check API_URL)'}`);
       set({ isLoading: false });
     }
   },
