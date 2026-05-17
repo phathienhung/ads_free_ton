@@ -55,7 +55,7 @@ app.get('/api/health', (_req, res) => {
 });
 
 // ==================== AUTH ====================
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', async (req: express.Request, res: express.Response) => {
   try {
     const { initData } = req.body;
     const ip = req.ip || req.socket.remoteAddress;
@@ -68,7 +68,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // Dev login (for testing without Telegram)
-app.post('/api/auth/dev-login', async (req, res) => {
+app.post('/api/auth/dev-login', async (req: express.Request, res: express.Response) => {
   try {
     const { telegramId, username, firstName } = req.body;
     if (process.env.NODE_ENV === 'production') {
@@ -236,7 +236,7 @@ app.get('/api/wallet/transactions', authMiddleware, async (req: AuthRequest, res
 });
 
 // ==================== GAMIFICATION ====================
-app.get('/api/leaderboard/:type', async (req, res) => {
+app.get('/api/leaderboard/:type', async (req: express.Request, res: express.Response) => {
   try {
     const type = req.params.type as 'earner' | 'advertiser' | 'referral';
     const period = (req.query.period as string) || 'all';
@@ -303,7 +303,7 @@ app.get('/api/admin/stats', authMiddleware, adminMiddleware, async (_req, res) =
   }
 });
 
-app.get('/api/admin/users', authMiddleware, adminMiddleware, async (req, res) => {
+app.get('/api/admin/users', authMiddleware, adminMiddleware, async (req: express.Request, res: express.Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const search = req.query.search as string;
@@ -323,7 +323,7 @@ app.post('/api/admin/users/:id/ban', authMiddleware, adminMiddleware, async (req
   }
 });
 
-app.get('/api/admin/campaigns', authMiddleware, adminMiddleware, async (req, res) => {
+app.get('/api/admin/campaigns', authMiddleware, adminMiddleware, async (req: express.Request, res: express.Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const status = req.query.status as string;
@@ -343,7 +343,7 @@ app.post('/api/admin/campaigns/:id/review', authMiddleware, adminMiddleware, asy
   }
 });
 
-app.get('/api/admin/withdrawals', authMiddleware, adminMiddleware, async (req, res) => {
+app.get('/api/admin/withdrawals', authMiddleware, adminMiddleware, async (req: express.Request, res: express.Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const result = await getPendingWithdrawals(page);
@@ -362,7 +362,7 @@ app.post('/api/admin/withdrawals/:id/process', authMiddleware, adminMiddleware, 
   }
 });
 
-app.get('/api/admin/fraud-logs', authMiddleware, adminMiddleware, async (req, res) => {
+app.get('/api/admin/fraud-logs', authMiddleware, adminMiddleware, async (req: express.Request, res: express.Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const result = await getFraudLogs(page);
@@ -373,7 +373,7 @@ app.get('/api/admin/fraud-logs', authMiddleware, adminMiddleware, async (req, re
 });
 
 // ==================== WEBSOCKET ====================
-io.on('connection', (socket) => {
+io.on('connection', (socket: any) => {
   const userId = socket.handshake.query.userId as string;
   if (userId) {
     socket.join(userId);
