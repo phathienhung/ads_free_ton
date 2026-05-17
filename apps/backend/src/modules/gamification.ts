@@ -24,7 +24,7 @@ export async function getLeaderboard(
         user: { select: { username: true, firstName: true, lastName: true, photoUrl: true, level: true, telegramId: true } },
       },
     });
-    result = wallets.map((w, i) => ({
+    result = wallets.map((w: any, i: number) => ({
       rank: i + 1,
       username: w.user.username || w.user.firstName || 'Anonymous',
       photoUrl: w.user.photoUrl,
@@ -41,7 +41,7 @@ export async function getLeaderboard(
         user: { select: { username: true, firstName: true, photoUrl: true, level: true, telegramId: true } },
       },
     });
-    result = wallets.map((w, i) => ({
+    result = wallets.map((w: any, i: number) => ({
       rank: i + 1,
       username: w.user.username || w.user.firstName || 'Anonymous',
       photoUrl: w.user.photoUrl,
@@ -93,9 +93,9 @@ export async function getDailyTasks(userId: string) {
     where: { userId, date: today },
   });
 
-  const progressMap = new Map(progress.map((p) => [p.dailyTaskId, p]));
+  const progressMap = new Map<string, any>(progress.map((p: any) => [p.dailyTaskId, p]));
 
-  return tasks.map((task) => {
+  return tasks.map((task: any) => {
     const p = progressMap.get(task.id);
     return {
       ...task,

@@ -85,7 +85,7 @@ export async function getAvailableCampaigns(userId: string, page = 1, limit = 20
     select: { campaignId: true },
   });
 
-  const excludeIds = completedCampaignIds.map((t) => t.campaignId);
+  const excludeIds = completedCampaignIds.map((t: { campaignId: string }) => t.campaignId);
 
   const campaigns = await prisma.campaign.findMany({
     where: {
@@ -131,7 +131,7 @@ export async function getAdvertiserCampaigns(advertiserId: string) {
     },
   });
 
-  return campaigns.map((c) => ({
+  return campaigns.map((c: any) => ({
     ...serializeCampaign(c),
     completions: (c as any)._count.taskCompletions,
   }));
@@ -205,7 +205,7 @@ export async function getAllCampaigns(status?: string, page = 1, limit = 20) {
   ]);
 
   return {
-    campaigns: campaigns.map((c) => ({
+    campaigns: campaigns.map((c: any) => ({
       ...serializeCampaign(c),
       advertiser: {
         ...(c as any).advertiser,

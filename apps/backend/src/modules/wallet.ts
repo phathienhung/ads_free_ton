@@ -108,7 +108,7 @@ export async function getTransactions(userId: string, page = 1, limit = 20) {
   ]);
 
   return {
-    transactions: transactions.map((t) => ({
+    transactions: transactions.map((t: any) => ({
       ...t,
       amount: t.amount.toString(),
       fee: t.fee.toString(),

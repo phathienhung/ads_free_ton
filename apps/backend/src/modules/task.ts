@@ -279,7 +279,7 @@ export async function getUserTasks(userId: string, page = 1, limit = 20) {
   ]);
 
   return {
-    tasks: tasks.map((t) => ({
+    tasks: tasks.map((t: any) => ({
       ...t,
       reward: t.reward?.toString(),
     })),
