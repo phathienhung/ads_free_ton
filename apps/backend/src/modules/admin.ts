@@ -82,7 +82,7 @@ export async function getUsers(page = 1, limit = 20, search?: string) {
   ]);
 
   return {
-    users: users.map((u) => ({
+    users: users.map((u: any) => ({
       ...u,
       telegramId: u.telegramId.toString(),
       wallet: u.wallet
@@ -146,7 +146,7 @@ export async function getPendingWithdrawals(page = 1, limit = 20) {
   ]);
 
   return {
-    transactions: transactions.map((t) => ({
+    transactions: transactions.map((t: any) => ({
       ...t,
       amount: t.amount.toString(),
       fee: t.fee.toString(),
@@ -178,7 +178,7 @@ export async function getFraudLogs(page = 1, limit = 20) {
   ]);
 
   return {
-    logs: logs.map((l) => ({
+    logs: logs.map((l: any) => ({
       ...l,
       user: {
         ...(l as any).user,

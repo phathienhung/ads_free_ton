@@ -8,7 +8,8 @@
     "start:dev": "ts-node-dev --respawn --transpile-only src/main.ts",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^6.8.0",

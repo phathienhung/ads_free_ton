@@ -190,7 +190,7 @@ export async function doSpin(userId: string) {
   if (rewards.length === 0) throw new Error('No spin rewards configured');
 
   // Weighted random selection
-  const totalWeight = rewards.reduce((sum, r) => sum + r.probability, 0);
+  const totalWeight = rewards.reduce((sum: number, r: any) => sum + r.probability, 0);
   let random = Math.random() * totalWeight;
   let selected = rewards[0];
 
