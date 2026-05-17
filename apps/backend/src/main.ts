@@ -43,6 +43,11 @@ const PORT = process.env.PORT || process.env.BACKEND_PORT || 3001;
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+// Root route
+app.get('/', (_req, res) => {
+  res.json({ message: 'AdsFree API is running', version: '1.0.0' });
+});
+
 // Health check
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
