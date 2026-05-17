@@ -35,7 +35,6 @@ interface AppState {
   hideReward: () => void;
   
   login: (initData?: string) => Promise<void>;
-  devLogin: () => Promise<void>;
   refreshUser: () => Promise<void>;
   logout: () => void;
 }
@@ -64,21 +63,11 @@ export const useAppStore = create<AppState>((set, get) => ({
         const result = await api.login(initData);
         api.setToken(result.accessToken);
         set({ user: result.user, isAuthenticated: true, isLoading: false });
+      } else {
+        set({ isLoading: false });
       }
     } catch (err) {
       console.error('Login error:', err);
-      set({ isLoading: false });
-    }
-  },
-
-  devLogin: async () => {
-    try {
-      set({ isLoading: true });
-      const result = await api.devLogin(123456789, 'dev_user');
-      api.setToken(result.accessToken);
-      set({ user: result.user, isAuthenticated: true, isLoading: false });
-    } catch (err) {
-      console.error('Dev login error:', err);
       set({ isLoading: false });
     }
   },

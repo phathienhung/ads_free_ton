@@ -15,7 +15,7 @@ import AdvertiserPage from '@/components/pages/AdvertiserPage';
 import RewardPopup from '@/components/RewardPopup';
 
 export default function App() {
-  const { user, isLoading, isAuthenticated, activeTab, devLogin, rewardPopup } = useAppStore();
+  const { user, isLoading, isAuthenticated, activeTab, login, rewardPopup } = useAppStore();
   const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
@@ -82,7 +82,18 @@ export default function App() {
         <p style={{ color: 'var(--text-secondary)', textAlign: 'center', maxWidth: 300 }}>
           Earn rewards by completing simple tasks. Promote your Telegram channel to real users.
         </p>
-        <button className="btn btn-primary btn-lg" onClick={devLogin}>
+        <button className="btn btn-primary btn-lg" onClick={() => {
+          if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
+            const initData = (window as any).Telegram.WebApp.initData;
+            if (initData) {
+              login(initData);
+            } else {
+              alert('Please open this app inside Telegram to log in.');
+            }
+          } else {
+            alert('Telegram SDK not found. Please open via Telegram.');
+          }
+        }}>
           🎮 Start Earning
         </button>
         <p style={{ color: 'var(--text-muted)', fontSize: 12 }}>
