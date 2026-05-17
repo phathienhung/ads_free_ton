@@ -1,0 +1,482 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== USER & AUTH ====================
+
+model User {
+  id              String   @id @default(uuid())
+  telegramId      BigInt   @unique
+  username        String?
+  firstName       String?
+  lastName        String?
+  photoUrl        String?
+  languageCode    String   @default("en")
+  
+  // Gamification
+  level           Int      @default(1)
+  xp              Int      @default(0)
+  energy          Int      @default(100)
+  maxEnergy       Int      @default(100)
+  energyUpdatedAt DateTime @default(now())
+  
+  // Referral
+  referralCode    String   @unique
+  referredById    String?
+  referredBy      User?    @relation("ReferralRelation", fields: [referredById], references: [id])
+  referrals       User[]   @relation("ReferralRelation")
+  
+  // Status
+  role            UserRole  @default(USER)
+  isBanned        Boolean   @default(false)
+  bannedReason    String?
+  
+  // Anti-fraud
+  deviceFingerprint String?
+  lastIp            String?
+  fraudScore        Float     @default(0)
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  lastActiveAt    DateTime  @default(now())
+  
+  // Relations
+  wallet          Wallet?
+  campaigns       Campaign[]
+  taskCompletions TaskCompletion[]
+  dailyTaskProgress UserDailyTask[]
+  achievements    UserAchievement[]
+  spinHistory     SpinHistory[]
+  inventory       UserInventory[]
+  notifications   Notification[]
+  transactions    Transaction[]
+  fraudLogs       FraudLog[]
+  
+  @@index([telegramId])
+  @@index([referralCode])
+}
+
+enum UserRole {
+  USER
+  ADVERTISER
+  ADMIN
+}
+
+// ==================== WALLET & TRANSACTIONS ====================
+
+model Wallet {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id])
+  
+  balance       Decimal  @default(0) @db.Decimal(20, 8)
+  frozenBalance Decimal  @default(0) @db.Decimal(20, 8)
+  totalEarned   Decimal  @default(0) @db.Decimal(20, 8)
+  totalSpent    Decimal  @default(0) @db.Decimal(20, 8)
+  
+  tonAddress    String?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Transaction {
+  id          String          @id @default(uuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id])
+  
+  type        TransactionType
+  amount      Decimal         @db.Decimal(20, 8)
+  fee         Decimal         @default(0) @db.Decimal(20, 8)
+  
+  status      TransactionStatus @default(PENDING)
+  description String?
+  metadata    Json?
+  
+  // For withdrawal
+  tonTxHash   String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  REWARD
+  CAMPAIGN_SPEND
+  CAMPAIGN_REFUND
+  REFERRAL_BONUS
+  SPIN_REWARD
+  PURCHASE
+  DAILY_BONUS
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// ==================== CAMPAIGNS & ADS ====================
+
+model Campaign {
+  id              String        @id @default(uuid())
+  advertiserId    String
+  advertiser      User          @relation(fields: [advertiserId], references: [id])
+  
+  title           String
+  description     String
+  bannerUrl       String?
+  
+  type            CampaignType
+  targetUrl       String        // Telegram channel/bot link or website
+  
+  // Pricing
+  pricingModel    PricingModel  @default(CPE)
+  pricePerAction  Decimal       @db.Decimal(20, 8)  // Cost per action
+  totalBudget     Decimal       @db.Decimal(20, 8)
+  spentBudget     Decimal       @default(0) @db.Decimal(20, 8)
+  
+  // Targets
+  targetCount     Int           @default(0)  // Target number of completions
+  completedCount  Int           @default(0)
+  viewCount       Int           @default(0)
+  clickCount      Int           @default(0)
+  
+  // Status
+  status          CampaignStatus @default(PENDING_REVIEW)
+  isPriority      Boolean        @default(false)
+  
+  // Targeting
+  targetCountries String[]       @default([])
+  targetLanguages String[]       @default([])
+  minUserLevel    Int            @default(1)
+  
+  // Timing
+  startDate       DateTime?
+  endDate         DateTime?
+  
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  
+  // Relations
+  taskCompletions TaskCompletion[]
+  
+  @@index([advertiserId])
+  @@index([status])
+  @@index([type])
+}
+
+enum CampaignType {
+  CHANNEL
+  GROUP
+  BOT
+  WEBSITE
+  MINI_APP
+}
+
+enum PricingModel {
+  CPC   // Cost per click
+  CPM   // Cost per mille (1000 impressions)
+  CPE   // Cost per engagement (join/start)
+}
+
+enum CampaignStatus {
+  PENDING_REVIEW
+  ACTIVE
+  PAUSED
+  COMPLETED
+  REJECTED
+  EXPIRED
+}
+
+// ==================== TASK COMPLETIONS ====================
+
+model TaskCompletion {
+  id          String             @id @default(uuid())
+  userId      String
+  user        User               @relation(fields: [userId], references: [id])
+  campaignId  String
+  campaign    Campaign           @relation(fields: [campaignId], references: [id])
+  
+  status      TaskCompletionStatus @default(STARTED)
+  reward      Decimal?           @db.Decimal(20, 8)
+  
+  // Verification
+  verifiedAt    DateTime?
+  startedAt     DateTime         @default(now())
+  completedAt   DateTime?
+  
+  // Anti-fraud
+  ipAddress     String?
+  userAgent     String?
+  
+  createdAt     DateTime         @default(now())
+  
+  @@unique([userId, campaignId])
+  @@index([userId])
+  @@index([campaignId])
+  @@index([status])
+}
+
+enum TaskCompletionStatus {
+  STARTED
+  PENDING_VERIFICATION
+  VERIFIED
+  REWARDED
+  FAILED
+  FRAUD_DETECTED
+}
+
+// ==================== GAMIFICATION ====================
+
+model DailyTask {
+  id          String    @id @default(uuid())
+  title       String
+  titleVi     String?
+  titleRu     String?
+  description String
+  descriptionVi String?
+  descriptionRu String?
+  type        DailyTaskType
+  target      Int       @default(1)    // e.g., complete 3 tasks
+  xpReward    Int       @default(10)
+  coinReward  Decimal   @default(0) @db.Decimal(20, 8)
+  isActive    Boolean   @default(true)
+  
+  progress    UserDailyTask[]
+}
+
+enum DailyTaskType {
+  COMPLETE_ADS
+  EARN_COINS
+  REFER_FRIENDS
+  LOGIN_STREAK
+  SPIN_WHEEL
+}
+
+model UserDailyTask {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  dailyTaskId String
+  dailyTask   DailyTask @relation(fields: [dailyTaskId], references: [id])
+  
+  progress    Int      @default(0)
+  completed   Boolean  @default(false)
+  claimed     Boolean  @default(false)
+  date        DateTime @db.Date
+  
+  @@unique([userId, dailyTaskId, date])
+  @@index([userId, date])
+}
+
+model Achievement {
+  id          String   @id @default(uuid())
+  title       String
+  titleVi     String?
+  titleRu     String?
+  description String
+  descriptionVi String?
+  descriptionRu String?
+  icon        String
+  category    String
+  requirement Int      // e.g., complete 100 tasks
+  xpReward    Int      @default(50)
+  coinReward  Decimal  @default(0) @db.Decimal(20, 8)
+  
+  users       UserAchievement[]
+}
+
+model UserAchievement {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  
+  unlockedAt    DateTime    @default(now())
+  
+  @@unique([userId, achievementId])
+}
+
+model SpinReward {
+  id          String  @id @default(uuid())
+  label       String
+  amount      Decimal @db.Decimal(20, 8)
+  probability Float   // 0.0 - 1.0
+  icon        String
+  color       String
+  isActive    Boolean @default(true)
+}
+
+model SpinHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  reward    Decimal  @db.Decimal(20, 8)
+  label     String
+  
+  createdAt DateTime @default(now())
+  
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// ==================== LEADERBOARD ====================
+
+model LeaderboardSnapshot {
+  id        String          @id @default(uuid())
+  type      LeaderboardType
+  period    String          // "2024-01-15" or "2024-W03" or "2024-01"
+  telegramId BigInt
+  username  String?
+  score     Decimal         @db.Decimal(20, 8)
+  rank      Int
+  
+  createdAt DateTime        @default(now())
+  
+  @@unique([type, period, telegramId])
+  @@index([type, period])
+}
+
+enum LeaderboardType {
+  EARNER
+  ADVERTISER
+  REFERRAL
+}
+
+// ==================== MARKETPLACE ====================
+
+model NftItem {
+  id          String      @id @default(uuid())
+  name        String
+  description String
+  imageUrl    String?
+  category    NftCategory
+  price       Decimal     @db.Decimal(20, 8)
+  
+  // Effects
+  boostMultiplier Float?   // e.g., 2.0 for 2x rewards
+  duration        Int?     // Duration in hours, null = permanent
+  
+  totalSupply     Int      @default(-1)  // -1 = unlimited
+  soldCount       Int      @default(0)
+  isActive        Boolean  @default(true)
+  
+  inventory       UserInventory[]
+}
+
+enum NftCategory {
+  BOOSTER
+  PRIORITY_TICKET
+  SKIN
+  FRAME
+  SPECIAL
+}
+
+model UserInventory {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  itemId    String
+  item      NftItem  @relation(fields: [itemId], references: [id])
+  
+  isActive  Boolean  @default(false)
+  expiresAt DateTime?
+  
+  purchasedAt DateTime @default(now())
+  
+  @@index([userId])
+}
+
+// ==================== NOTIFICATIONS ====================
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  
+  type      NotificationType
+  title     String
+  message   String
+  data      Json?
+  isRead    Boolean          @default(false)
+  
+  createdAt DateTime         @default(now())
+  
+  @@index([userId, isRead])
+  @@index([createdAt])
+}
+
+enum NotificationType {
+  REWARD
+  CAMPAIGN_STATUS
+  SYSTEM
+  REFERRAL
+  ACHIEVEMENT
+  EVENT
+}
+
+// ==================== ANTI-FRAUD ====================
+
+model FraudLog {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  
+  type      String    // e.g., "MULTI_ACCOUNT", "SPAM_CLICK", "FAST_JOIN"
+  severity  String    // LOW, MEDIUM, HIGH
+  details   Json
+  action    String?   // e.g., "WARN", "BAN", "FREEZE"
+  
+  createdAt DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([type])
+}
+
+// ==================== ADMIN ====================
+
+model AdminAuditLog {
+  id        String   @id @default(uuid())
+  adminId   String
+  action    String
+  target    String?
+  details   Json?
+  
+  createdAt DateTime @default(now())
+  
+  @@index([adminId])
+  @@index([createdAt])
+}
+
+// ==================== EVENTS ====================
+
+model Event {
+  id          String    @id @default(uuid())
+  title       String
+  description String
+  imageUrl    String?
+  
+  bonusMultiplier Float @default(1.5)
+  
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean   @default(true)
+  
+  createdAt   DateTime  @default(now())
+  
+  @@index([startDate, endDate])
+}
