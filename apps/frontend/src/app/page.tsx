@@ -26,14 +26,34 @@ export default function App() {
         try {
           const user = await api.getMe();
           useAppStore.getState().setUser(user);
+          setInitializing(false);
+          return;
         } catch {
           api.clearToken();
         }
       }
+
+      // Auto-login if inside Telegram
+      if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
+        const tg = (window as any).Telegram.WebApp;
+        const initData = tg.initData;
+        
+        if (initData) {
+          try {
+            await login(initData);
+            setInitializing(false);
+            return;
+          } catch (err: any) {
+            console.error('Auto-login failed:', err);
+            // Don't alert here to avoid annoying loop, just stop initializing
+          }
+        }
+      }
+      
       setInitializing(false);
     };
     init();
-  }, []);
+  }, [login]);
 
   // Loading screen
   if (initializing) {
@@ -79,26 +99,18 @@ export default function App() {
         }}>
           AdsFree
         </h1>
-        <p style={{ color: 'var(--text-secondary)', textAlign: 'center', maxWidth: 300 }}>
-          Earn rewards by completing simple tasks. Promote your Telegram channel to real users.
-        </p>
-        <button className="btn btn-primary btn-lg" onClick={() => {
-          if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
-            const initData = (window as any).Telegram.WebApp.initData;
-            if (initData) {
-              login(initData);
-            } else {
-              alert('Please open this app inside Telegram to log in.');
-            }
-          } else {
-            alert('Telegram SDK not found. Please open via Telegram.');
-          }
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px',
+          color: 'var(--text-secondary)', textAlign: 'center', maxWidth: 300
         }}>
-          🎮 Start Earning
-        </button>
-        <p style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-          Opens in Telegram Mini App
-        </p>
+          <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>Connecting to account...</div>
+          <button className="btn btn-primary btn-lg" onClick={() => window.location.reload()}>
+            🔄 Retry Connection
+          </button>
+          <p style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: '12px' }}>
+            Please ensure you are opening this via the official Telegram Bot
+          </p>
+        </div>
       </div>
     );
   }
