@@ -6,10 +6,10 @@ dotenv.config();
 dotenv.config({ path: '../../.env' });
 
 const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('SUPABASE_URL or SUPABASE_ANON_KEY is missing in environment variables.');
+if (!supabaseUrl || !supabaseKey) {
+  console.warn('Supabase credentials missing. Database operations will fail.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseKey);
