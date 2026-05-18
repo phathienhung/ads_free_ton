@@ -97,7 +97,7 @@ export async function authenticateUser(initDataRaw: string, ipAddress?: string, 
 
   if (!user) {
     const userId = uuidv4();
-    // Create user and wallet
+    // Create user with explicit NOT NULL fields
     const { data: newUser, error: createError } = await supabase
       .from('User')
       .insert({
@@ -111,6 +111,12 @@ export async function authenticateUser(initDataRaw: string, ipAddress?: string, 
         referralCode: generateReferralCode(),
         lastIp: ipAddress,
         role: 'USER',
+        level: 1,
+        xp: 0,
+        energy: 100,
+        maxEnergy: 100,
+        energyUpdatedAt: new Date().toISOString(),
+        lastActiveAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       })
       .select()
@@ -118,15 +124,19 @@ export async function authenticateUser(initDataRaw: string, ipAddress?: string, 
 
     if (createError) {
       console.error('Error creating user in Supabase:', createError);
-      throw new Error('Database create error');
+      throw new Error(`Database create error (User): ${createError.message} (${createError.code})`);
     }
 
-    // Create wallet for new user
+    // Create wallet for new user with explicit NOT NULL fields
     const { data: newWallet, error: walletError } = await supabase
       .from('Wallet')
       .insert({ 
         id: uuidv4(),
         userId: newUser.id,
+        balance: 0,
+        frozenBalance: 0,
+        totalEarned: 0,
+        totalSpent: 0,
         updatedAt: new Date().toISOString(),
       })
       .select()
@@ -134,6 +144,7 @@ export async function authenticateUser(initDataRaw: string, ipAddress?: string, 
 
     if (walletError) {
       console.error('Error creating wallet in Supabase:', walletError);
+      throw new Error(`Database create error (Wallet): ${walletError.message} (${walletError.code})`);
     }
 
     user = { ...newUser, wallet: newWallet };
@@ -147,6 +158,7 @@ export async function authenticateUser(initDataRaw: string, ipAddress?: string, 
         lastName: tgUser.last_name,
         photoUrl: tgUser.photo_url,
         lastActiveAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(), // Ensure updatedAt is updated
         lastIp: ipAddress,
       })
       .eq('id', user.id);
