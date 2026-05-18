@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../lib/prisma';
 import { supabase } from '../lib/supabase';
 
@@ -95,10 +96,12 @@ export async function authenticateUser(initDataRaw: string, ipAddress?: string, 
   let user = userRaw;
 
   if (!user) {
+    const userId = uuidv4();
     // Create user and wallet
     const { data: newUser, error: createError } = await supabase
       .from('User')
       .insert({
+        id: userId,
         telegramId: tgUser.id,
         username: tgUser.username,
         firstName: tgUser.first_name,
@@ -108,6 +111,7 @@ export async function authenticateUser(initDataRaw: string, ipAddress?: string, 
         referralCode: generateReferralCode(),
         lastIp: ipAddress,
         role: 'USER',
+        updatedAt: new Date().toISOString(),
       })
       .select()
       .single();
@@ -120,7 +124,11 @@ export async function authenticateUser(initDataRaw: string, ipAddress?: string, 
     // Create wallet for new user
     const { data: newWallet, error: walletError } = await supabase
       .from('Wallet')
-      .insert({ userId: newUser.id })
+      .insert({ 
+        id: uuidv4(),
+        userId: newUser.id,
+        updatedAt: new Date().toISOString(),
+      })
       .select()
       .single();
 
