@@ -61,6 +61,7 @@ export async function createCampaign(data: {
       targetCountries: data.targetCountries || [],
       targetLanguages: data.targetLanguages || [],
       minUserLevel: data.minUserLevel || 1,
+      status: 'ACTIVE',
       startDate: data.startDate?.toISOString(),
       endDate: data.endDate?.toISOString(),
       updatedAt: new Date().toISOString()

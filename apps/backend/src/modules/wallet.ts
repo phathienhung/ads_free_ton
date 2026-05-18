@@ -1,6 +1,31 @@
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../lib/supabase';
 
+const BOT_TOKEN = '8942132951:AAGvbVoWMIja8FYWpV-ezCBE9m-spXv4WhM';
+const ADMIN_CHAT_ID = '1597337885';
+const CHANNEL_CHAT_ID = '@ads_free_withdrawals';
+
+function generateShortId(length = 8) {
+  return Math.random().toString(36).substring(2, 2 + length).toUpperCase();
+}
+
+async function notifyTelegram(chatId: string, text: string, replyMarkup?: any) {
+  try {
+    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: 'HTML',
+        reply_markup: replyMarkup
+      })
+    });
+  } catch (err) {
+    console.error('Telegram notification error:', err);
+  }
+}
+
 /**
  * Get wallet balance for a user
  */
@@ -40,7 +65,7 @@ export async function deposit(userId: string, amount: number) {
     })
     .eq('userId', userId);
 
-  const txId = uuidv4();
+  const txId = generateShortId();
   const { data: tx, error } = await supabase.from('Transaction').insert({
     id: txId,
     userId,
@@ -49,9 +74,15 @@ export async function deposit(userId: string, amount: number) {
     status: 'COMPLETED',
     description: 'TON deposit',
     updatedAt: new Date().toISOString()
-  }).select().single();
+  }).select('*, user:User(username, firstName)').single();
 
   if (error) throw error;
+
+  // Notify Bot
+  const userLabel = (tx as any).user?.username ? `@${(tx as any).user.username}` : (tx as any).user?.firstName || 'User';
+  const msg = `💳 <b>NEW DEPOSIT</b>\nUser: ${userLabel}\nAmount: <b>${amount} TON</b>\nID: <code>${txId}</code>`;
+  await notifyTelegram(ADMIN_CHAT_ID, msg);
+  await notifyTelegram(CHANNEL_CHAT_ID, msg);
 
   return { transactionId: tx.id, amount: amount.toString() };
 }
@@ -88,7 +119,7 @@ export async function requestWithdrawal(userId: string, amount: number, tonAddre
     })
     .eq('userId', userId);
 
-  const txId = uuidv4();
+  const txId = generateShortId();
   const { data: tx, error } = await supabase.from('Transaction').insert({
     id: txId,
     userId,
@@ -99,9 +130,22 @@ export async function requestWithdrawal(userId: string, amount: number, tonAddre
     description: `Withdrawal to ${tonAddress}`,
     metadata: { tonAddress },
     updatedAt: new Date().toISOString()
-  }).select().single();
+  }).select('*, user:User(username, firstName)').single();
 
   if (error) throw error;
+
+  // Notify Admin with button
+  const userLabel = (tx as any).user?.username ? `@${(tx as any).user.username}` : (tx as any).user?.firstName || 'User';
+  const username = (tx as any).user?.username || 'user';
+  const msg = `📤 <b>WITHDRAWAL REQUEST</b>\nUser: ${userLabel}\nAmount: <b>${netAmount} TON</b>\nAddress: <code>${tonAddress}</code>\nID: <code>${txId}</code>`;
+  
+  const replyMarkup = {
+    inline_keyboard: [[
+      { text: "✅ CONFIRM DONE", callback_data: `DONE_${txId}_${username}_${netAmount}` }
+    ]]
+  };
+
+  await notifyTelegram(ADMIN_CHAT_ID, msg, replyMarkup);
 
   return {
     transactionId: tx.id,
