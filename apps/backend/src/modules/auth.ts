@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma';
+import { supabase } from '../lib/supabase';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const JWT_SECRET = process.env.JWT_SECRET || 'change-me';
@@ -79,16 +80,26 @@ export async function authenticateUser(initDataRaw: string, ipAddress?: string, 
 
   const tgUser = initData.user;
 
-  // Upsert user
-  let user = await prisma.user.findUnique({
-    where: { telegramId: BigInt(tgUser.id) },
-    include: { wallet: true },
-  });
+  // Upsert user using Supabase SDK
+  const { data: userRaw, error: fetchError } = await supabase
+    .from('User')
+    .select('*, wallet:Wallet(*)')
+    .eq('telegramId', tgUser.id)
+    .single();
+
+  if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "No rows found"
+    console.error('Error fetching user from Supabase:', fetchError);
+    throw new Error('Database fetch error');
+  }
+
+  let user = userRaw;
 
   if (!user) {
-    user = await prisma.user.create({
-      data: {
-        telegramId: BigInt(tgUser.id),
+    // Create user and wallet
+    const { data: newUser, error: createError } = await supabase
+      .from('User')
+      .insert({
+        telegramId: tgUser.id,
         username: tgUser.username,
         firstName: tgUser.first_name,
         lastName: tgUser.last_name,
@@ -96,25 +107,45 @@ export async function authenticateUser(initDataRaw: string, ipAddress?: string, 
         languageCode: tgUser.language_code || 'en',
         referralCode: generateReferralCode(),
         lastIp: ipAddress,
-        wallet: {
-          create: {},
-        },
-      },
-      include: { wallet: true },
-    });
+        role: 'USER',
+      })
+      .select()
+      .single();
+
+    if (createError) {
+      console.error('Error creating user in Supabase:', createError);
+      throw new Error('Database create error');
+    }
+
+    // Create wallet for new user
+    const { data: newWallet, error: walletError } = await supabase
+      .from('Wallet')
+      .insert({ userId: newUser.id })
+      .select()
+      .single();
+
+    if (walletError) {
+      console.error('Error creating wallet in Supabase:', walletError);
+    }
+
+    user = { ...newUser, wallet: newWallet };
   } else {
     // Update user info
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
+    const { error: updateError } = await supabase
+      .from('User')
+      .update({
         username: tgUser.username,
         firstName: tgUser.first_name,
         lastName: tgUser.last_name,
         photoUrl: tgUser.photo_url,
-        lastActiveAt: new Date(),
+        lastActiveAt: new Date().toISOString(),
         lastIp: ipAddress,
-      },
-    });
+      })
+      .eq('id', user.id);
+
+    if (updateError) {
+      console.error('Error updating user in Supabase:', updateError);
+    }
   }
 
   if (user.isBanned) {

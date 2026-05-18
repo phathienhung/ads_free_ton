@@ -35,6 +35,7 @@ import {
 } from './modules/gamification';
 import { getAdminStats, getUsers, toggleBanUser, getPendingWithdrawals, getFraudLogs } from './modules/admin';
 import { prisma } from './lib/prisma';
+import { supabase } from './lib/supabase';
 
 const app = express();
 const httpServer = createServer(app);
@@ -54,8 +55,23 @@ app.get('/', (_req, res) => {
 });
 
 // Health check
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get('/api/health', async (_req, res) => {
+  const { data, error } = await supabase.from('User').select('count', { count: 'exact', head: true });
+  res.json({ 
+    status: 'ok', 
+    supabase: error ? 'error' : 'connected',
+    timestamp: new Date().toISOString() 
+  });
+});
+
+app.get('/api/health/supabase', async (_req, res) => {
+  try {
+    const { data, error } = await supabase.from('User').select('id').limit(1);
+    if (error) throw error;
+    res.json({ status: 'connected', sampleData: data });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
 });
 
 // ==================== AUTH ====================
