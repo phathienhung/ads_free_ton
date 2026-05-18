@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
+import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
@@ -34,7 +35,6 @@ import {
   applyReferralCode,
 } from './modules/gamification';
 import { getAdminStats, getUsers, toggleBanUser, getPendingWithdrawals, getFraudLogs } from './modules/admin';
-import { prisma } from './lib/prisma';
 import { supabase } from './lib/supabase';
 
 const app = express();
@@ -95,22 +95,45 @@ app.post('/api/auth/dev-login', async (req: express.Request, res: express.Respon
       return res.status(403).json({ error: 'Dev login disabled in production' });
     }
 
-    let user = await prisma.user.findUnique({
-      where: { telegramId: BigInt(telegramId || 123456789) },
-      include: { wallet: true },
-    });
+    let { data: user } = await supabase
+      .from('User')
+      .select('*, wallet:Wallet(*)')
+      .eq('telegramId', telegramId || 123456789)
+      .single();
 
     if (!user) {
-      user = await prisma.user.create({
-        data: {
-          telegramId: BigInt(telegramId || 123456789),
+      const { data: newUser, error: createError } = await supabase
+        .from('User')
+        .insert({
+          id: uuidv4(),
+          telegramId: telegramId || 123456789,
           username: username || 'dev_user',
           firstName: firstName || 'Dev',
           referralCode: crypto.randomBytes(4).toString('hex').toUpperCase(),
-          wallet: { create: {} },
-        },
-        include: { wallet: true },
-      });
+          role: 'USER',
+          level: 1,
+          xp: 0,
+          energy: 100,
+          maxEnergy: 100,
+          energyUpdatedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        })
+        .select()
+        .single();
+      
+      if (createError) throw createError;
+
+      const { data: newWallet } = await supabase.from('Wallet').insert({
+        id: uuidv4(),
+        userId: newUser.id,
+        balance: 0,
+        frozenBalance: 0,
+        totalEarned: 0,
+        totalSpent: 0,
+        updatedAt: new Date().toISOString()
+      }).select().single();
+
+      user = { ...newUser, wallet: newWallet };
     }
 
     const accessToken = jwt.sign(
@@ -133,7 +156,7 @@ app.post('/api/auth/dev-login', async (req: express.Request, res: express.Respon
 app.get('/api/user/me', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const user = await getUserWithEnergy(req.userId!);
-    const wallet = await prisma.wallet.findUnique({ where: { userId: req.userId } });
+    const { data: wallet } = await supabase.from('Wallet').select('*').eq('userId', req.userId!).single();
     res.json(serializeUser({ ...user, wallet }));
   } catch (err: any) {
     res.status(500).json({ error: err.message });

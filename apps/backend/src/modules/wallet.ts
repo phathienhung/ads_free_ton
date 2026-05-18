@@ -1,11 +1,17 @@
-import { prisma } from '../lib/prisma';
+import { v4 as uuidv4 } from 'uuid';
+import { supabase } from '../lib/supabase';
 
 /**
  * Get wallet balance for a user
  */
 export async function getWallet(userId: string) {
-  const wallet = await prisma.wallet.findUnique({ where: { userId } });
-  if (!wallet) throw new Error('Wallet not found');
+  const { data: wallet, error } = await supabase
+    .from('Wallet')
+    .select('*')
+    .eq('userId', userId)
+    .single();
+
+  if (error || !wallet) throw new Error('Wallet not found');
 
   return {
     ...wallet,
@@ -22,22 +28,30 @@ export async function getWallet(userId: string) {
 export async function deposit(userId: string, amount: number) {
   if (amount <= 0) throw new Error('Amount must be positive');
 
-  await prisma.wallet.update({
-    where: { userId },
-    data: {
-      balance: { increment: amount },
-    },
-  });
+  // Fetch current
+  const { data: wallet } = await supabase.from('Wallet').select('balance').eq('userId', userId).single();
+  if (!wallet) throw new Error('Wallet not found');
 
-  const tx = await prisma.transaction.create({
-    data: {
-      userId,
-      type: 'DEPOSIT',
-      amount,
-      status: 'COMPLETED',
-      description: 'TON deposit',
-    },
-  });
+  await supabase
+    .from('Wallet')
+    .update({
+      balance: Number(wallet.balance) + amount,
+      updatedAt: new Date().toISOString()
+    })
+    .eq('userId', userId);
+
+  const txId = uuidv4();
+  const { data: tx, error } = await supabase.from('Transaction').insert({
+    id: txId,
+    userId,
+    type: 'DEPOSIT',
+    amount,
+    status: 'COMPLETED',
+    description: 'TON deposit',
+    updatedAt: new Date().toISOString()
+  }).select().single();
+
+  if (error) throw error;
 
   return { transactionId: tx.id, amount: amount.toString() };
 }
@@ -55,7 +69,7 @@ export async function requestWithdrawal(userId: string, amount: number, tonAddre
     throw new Error(`Minimum withdrawal is ${MIN_WITHDRAWAL}`);
   }
 
-  const wallet = await prisma.wallet.findUnique({ where: { userId } });
+  const { data: wallet } = await supabase.from('Wallet').select('balance, frozenBalance').eq('userId', userId).single();
   if (!wallet || Number(wallet.balance) < amount) {
     throw new Error('Insufficient balance');
   }
@@ -64,26 +78,30 @@ export async function requestWithdrawal(userId: string, amount: number, tonAddre
   const netAmount = amount - fee;
 
   // Freeze withdrawal amount
-  await prisma.wallet.update({
-    where: { userId },
-    data: {
-      balance: { decrement: amount },
-      frozenBalance: { increment: amount },
+  await supabase
+    .from('Wallet')
+    .update({
+      balance: Number(wallet.balance) - amount,
+      frozenBalance: Number(wallet.frozenBalance) + amount,
       tonAddress,
-    },
-  });
+      updatedAt: new Date().toISOString()
+    })
+    .eq('userId', userId);
 
-  const tx = await prisma.transaction.create({
-    data: {
-      userId,
-      type: 'WITHDRAWAL',
-      amount: netAmount,
-      fee,
-      status: 'PENDING',
-      description: `Withdrawal to ${tonAddress}`,
-      metadata: { tonAddress },
-    },
-  });
+  const txId = uuidv4();
+  const { data: tx, error } = await supabase.from('Transaction').insert({
+    id: txId,
+    userId,
+    type: 'WITHDRAWAL',
+    amount: netAmount,
+    fee,
+    status: 'PENDING',
+    description: `Withdrawal to ${tonAddress}`,
+    metadata: { tonAddress },
+    updatedAt: new Date().toISOString()
+  }).select().single();
+
+  if (error) throw error;
 
   return {
     transactionId: tx.id,
@@ -97,15 +115,20 @@ export async function requestWithdrawal(userId: string, amount: number, tonAddre
  * Get transaction history
  */
 export async function getTransactions(userId: string, page = 1, limit = 20) {
-  const [transactions, total] = await Promise.all([
-    prisma.transaction.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      skip: (page - 1) * limit,
-      take: limit,
-    }),
-    prisma.transaction.count({ where: { userId } }),
-  ]);
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
+  const { data, count, error } = await supabase
+    .from('Transaction')
+    .select('*', { count: 'exact' })
+    .eq('userId', userId)
+    .order('createdAt', { ascending: false })
+    .range(from, to);
+
+  if (error) throw error;
+
+  const transactions = data || [];
+  const total = count || 0;
 
   return {
     transactions: transactions.map((t: any) => ({
@@ -128,45 +151,54 @@ export async function processWithdrawal(
   adminId: string,
   tonTxHash?: string
 ) {
-  const tx = await prisma.transaction.findUnique({ where: { id: transactionId } });
-  if (!tx || tx.type !== 'WITHDRAWAL' || tx.status !== 'PENDING') {
+  const { data: tx, error: txError } = await supabase
+    .from('Transaction')
+    .select('*')
+    .eq('id', transactionId)
+    .single();
+
+  if (txError || !tx || tx.type !== 'WITHDRAWAL' || tx.status !== 'PENDING') {
     throw new Error('Invalid transaction');
   }
 
   const totalAmount = Number(tx.amount) + Number(tx.fee);
 
+  const { data: wallet } = await supabase.from('Wallet').select('balance, frozenBalance, totalSpent').eq('userId', tx.userId).single();
+  if (!wallet) throw new Error('Wallet not found');
+
   if (status === 'COMPLETED') {
     // Deduct from frozen balance
-    await prisma.wallet.update({
-      where: { userId: tx.userId },
-      data: {
-        frozenBalance: { decrement: totalAmount },
-        totalSpent: { increment: totalAmount },
-      },
-    });
+    await supabase
+      .from('Wallet')
+      .update({
+        frozenBalance: Number(wallet.frozenBalance) - totalAmount,
+        totalSpent: (Number(wallet.totalSpent) || 0) + totalAmount,
+        updatedAt: new Date().toISOString()
+      })
+      .eq('userId', tx.userId);
   } else {
     // Refund to balance
-    await prisma.wallet.update({
-      where: { userId: tx.userId },
-      data: {
-        balance: { increment: totalAmount },
-        frozenBalance: { decrement: totalAmount },
-      },
-    });
+    await supabase
+      .from('Wallet')
+      .update({
+        balance: Number(wallet.balance) + totalAmount,
+        frozenBalance: Number(wallet.frozenBalance) - totalAmount,
+        updatedAt: new Date().toISOString()
+      })
+      .eq('userId', tx.userId);
   }
 
-  await prisma.transaction.update({
-    where: { id: transactionId },
-    data: { status, tonTxHash },
-  });
+  await supabase
+    .from('Transaction')
+    .update({ status, tonTxHash, updatedAt: new Date().toISOString() })
+    .eq('id', transactionId);
 
-  await prisma.adminAuditLog.create({
-    data: {
-      adminId,
-      action: `WITHDRAWAL_${status}`,
-      target: transactionId,
-      details: { userId: tx.userId, amount: tx.amount.toString() },
-    },
+  await supabase.from('AdminAuditLog').insert({
+    id: uuidv4(),
+    adminId,
+    action: `WITHDRAWAL_${status}`,
+    target: transactionId,
+    details: { userId: tx.userId, amount: tx.amount.toString() },
   });
 
   return { status };
