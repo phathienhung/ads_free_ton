@@ -42,6 +42,10 @@ class ApiClient {
     return res.json();
   }
 
+  get<T>(endpoint: string) {
+    return this.request<T>(endpoint);
+  }
+
   // Auth
   login(initData: string) {
     return this.request<{ user: any; accessToken: string; refreshToken: string }>('/api/auth/login', {

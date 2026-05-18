@@ -1,37 +1,52 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAppStore } from '@/stores/useAppStore';
-
-const WHEEL_SEGMENTS = [
-  { label: '0.001 TON', color: '#3b82f6' },
-  { label: '0.005 TON', color: '#8b5cf6' },
-  { label: '0.002 TON', color: '#06b6d4' },
-  { label: '0.01 TON', color: '#22c55e' },
-  { label: '0.001 TON', color: '#f59e0b' },
-  { label: '0.05 TON', color: '#ef4444' },
-  { label: '0.002 TON', color: '#ec4899' },
-  { label: '0.001 TON', color: '#14b8a6' },
-];
 
 export default function SpinPage() {
   const { showReward, refreshUser, user } = useAppStore();
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [result, setResult] = useState<any>(null);
+  const [status, setStatus] = useState<any>(null);
+  const [segments, setSegments] = useState<any[]>([]);
+
+  useEffect(() => {
+    loadStatus();
+  }, []);
+
+  async function loadStatus() {
+    try {
+      const res = await api.get<any>('/api/spin/status');
+      setStatus(res);
+      setSegments(res.segments || []);
+    } catch (err) { console.error(err); }
+  }
 
   async function handleSpin() {
-    if (spinning) return;
+    if (spinning || !status) return;
+    if (!status.canFreeSpin && status.extraSpins <= 0) {
+      alert('No spins left! Earn more spins by completing tasks.');
+      return;
+    }
+
     try {
       setSpinning(true);
       setResult(null);
       const res = await api.spin();
       
-      // Spin animation
-      const segmentAngle = 360 / WHEEL_SEGMENTS.length;
-      const randomSegment = Math.floor(Math.random() * WHEEL_SEGMENTS.length);
-      const newRotation = rotation + 360 * 5 + (randomSegment * segmentAngle) + Math.random() * segmentAngle;
+      // Find segment index for animation
+      const segmentIndex = segments.findIndex(s => s.label === res.label);
+      const safeIndex = segmentIndex >= 0 ? segmentIndex : 0;
+      
+      // Spin animation logic
+      const segmentAngle = 360 / segments.length;
+      // Target angle: (segments.length - 1 - index) * segmentAngle + gap
+      // Because wheel rotates clockwise, target index is in reverse relative to start positions
+      const targetRotation = (segments.length - safeIndex) * segmentAngle - (segmentAngle / 2);
+      const newRotation = rotation + (360 * 8) + targetRotation - (rotation % 360);
+      
       setRotation(newRotation);
       
       setTimeout(async () => {
@@ -39,6 +54,12 @@ export default function SpinPage() {
         setSpinning(false);
         showReward(res.reward, `🎰 ${res.label}`);
         await refreshUser();
+        // Update status locally to avoid fetch lag
+        setStatus({
+          canFreeSpin: res.canFreeSpin,
+          extraSpins: res.extraSpins,
+          segments: segments
+        });
       }, 4000);
     } catch (err: any) {
       alert(err.message);
@@ -46,14 +67,27 @@ export default function SpinPage() {
     }
   }
 
-  const segmentAngle = 360 / WHEEL_SEGMENTS.length;
+  if (segments.length === 0) {
+    return <div className="page"><div className="skeleton" style={{ height: 300 }} /></div>;
+  }
+
+  const segmentAngle = 360 / segments.length;
 
   return (
     <div className="page" style={{ textAlign: 'center' }}>
       <h1 className="page-title" style={{ marginBottom: 8 }}>🎰 Lucky Spin</h1>
-      <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24 }}>
-        Spin the wheel daily for a chance to win TON!
-      </p>
+      
+      <div className="glass-card" style={{ display: 'inline-flex', padding: '8px 16px', gap: 12, marginBottom: 24, borderRadius: 20 }}>
+        <div style={{ fontSize: 13 }}>
+          Free Spin: <span style={{ fontWeight: 800, color: status?.canFreeSpin ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+            {status?.canFreeSpin ? 'Available' : 'Used'}
+          </span>
+        </div>
+        <div style={{ height: 16, width: 1, background: 'var(--border-color)' }} />
+        <div style={{ fontSize: 13 }}>
+          Extra Spins: <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{status?.extraSpins || 0}</span>
+        </div>
+      </div>
 
       {/* Wheel */}
       <div className="spin-container" style={{ marginBottom: 32 }}>
@@ -62,9 +96,9 @@ export default function SpinPage() {
         <svg
           viewBox="0 0 300 300"
           className="spin-wheel"
-          style={{ transform: `rotate(${rotation}deg)` }}
+          style={{ transform: `rotate(${rotation}deg)`, transition: 'transform 4s cubic-bezier(0.15, 0, 0.15, 1)' }}
         >
-          {WHEEL_SEGMENTS.map((seg, i) => {
+          {segments.map((seg, i) => {
             const startAngle = i * segmentAngle;
             const endAngle = startAngle + segmentAngle;
             const startRad = (startAngle - 90) * (Math.PI / 180);
@@ -84,48 +118,41 @@ export default function SpinPage() {
               <g key={i}>
                 <path
                   d={`M 150 150 L ${x1} ${y1} A 140 140 0 ${largeArc} 1 ${x2} ${y2} Z`}
-                  fill={seg.color}
-                  stroke="rgba(0,0,0,0.2)"
+                  fill={seg.color || '#333'}
+                  stroke="rgba(255,255,255,0.1)"
                   strokeWidth="1"
                 />
                 <text
                   x={textX}
                   y={textY}
                   fill="white"
-                  fontSize="9"
-                  fontWeight="bold"
-                  fontFamily="'JetBrains Mono', monospace"
+                  fontSize="10"
+                  fontWeight="900"
                   textAnchor="middle"
                   dominantBaseline="central"
                   transform={`rotate(${textRotate}, ${textX}, ${textY})`}
                 >
-                  {seg.label}
+                  {seg.icon}
                 </text>
               </g>
             );
           })}
-          {/* Center circle */}
-          <circle cx="150" cy="150" r="30" fill="var(--bg-primary)" stroke="rgba(255,255,255,0.1)" strokeWidth="2" />
+          <circle cx="150" cy="150" r="25" fill="var(--bg-secondary)" stroke="var(--border-color)" strokeWidth="2" />
+          <circle cx="150" cy="150" r="15" fill="var(--bg-primary)" />
         </svg>
 
         <button
           className="spin-button"
           onClick={handleSpin}
-          disabled={spinning}
-          style={{ opacity: spinning ? 0.6 : 1 }}
+          disabled={spinning || (!status?.canFreeSpin && (status?.extraSpins || 0) <= 0)}
+          style={{ 
+            opacity: (spinning || (!status?.canFreeSpin && (status?.extraSpins || 0) <= 0)) ? 0.6 : 1,
+            transform: spinning ? 'scale(0.95)' : 'scale(1)'
+           }}
         >
-          {spinning ? '...' : 'SPIN'}
+          {spinning ? '...' : (status?.canFreeSpin ? 'FREE SPIN' : 'USE EXTRA')}
         </button>
       </div>
-
-      {/* Result */}
-      {result && (
-        <div className="glass-card animate-fade-in" style={{ padding: 20, marginBottom: 24 }}>
-          <div style={{ fontSize: 48, marginBottom: 8 }}>🎉</div>
-          <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>You won</div>
-          <div className="reward-amount">+{result.reward} TON</div>
-        </div>
-      )}
 
       {/* Info */}
       <div className="glass-card" style={{ padding: 20, textAlign: 'left' }}>
@@ -135,16 +162,14 @@ export default function SpinPage() {
             🎰 <span>1 free spin per day</span>
           </li>
           <li style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'flex', gap: 8 }}>
-            ⏰ <span>Resets at UTC midnight</span>
+            🎁 <span>Win extra spins (+Spin) as rewards</span>
           </li>
           <li style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'flex', gap: 8 }}>
-            💰 <span>Rewards credited instantly</span>
-          </li>
-          <li style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'flex', gap: 8 }}>
-            📈 <span>Higher levels = bigger prizes</span>
+            💰 <span>Prizes: TON, Energy, XP, Bonus Spins</span>
           </li>
         </ul>
       </div>
     </div>
   );
 }
+

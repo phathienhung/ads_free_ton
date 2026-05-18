@@ -22,7 +22,7 @@ export default function ReferralPage() {
     setLoading(false);
   }
 
-  const referralLink = `https://t.me/AdsFreeBot?start=${stats?.referralCode || user?.referralCode || ''}`;
+  const referralLink = stats?.referralLink || `https://t.me/ads_free_ton_bot/app?startapp=${user?.telegramId || ''}`;
 
   async function copyLink() {
     try {

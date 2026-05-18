@@ -194,15 +194,15 @@ export async function claimDailyTask(userId: string, dailyTaskId: string) {
 }
 
 /**
- * Lucky spin
+ * Get spin status for user
  */
-export async function doSpin(userId: string) {
-  // Check if user already spun today for free
+export async function getSpinStatus(userId: string) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
+  // Check if user already spun today for free
   const { count: todaySpins, error: countError } = await supabase
     .from('SpinHistory')
     .select('id', { count: 'exact', head: true })
@@ -212,8 +212,41 @@ export async function doSpin(userId: string) {
 
   if (countError) throw countError;
 
+  const { data: user } = await supabase.from('User').select('extraSpins').eq('id', userId).single();
+  const { data: segments } = await supabase.from('SpinReward').select('*').eq('isActive', true);
+
+  return {
+    canFreeSpin: !todaySpins || todaySpins < 1,
+    extraSpins: user?.extraSpins || 0,
+    segments: segments || [],
+  };
+}
+
+/**
+ * Lucky spin
+ */
+export async function doSpin(userId: string) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  // Check free spin
+  const { count: todaySpins } = await supabase
+    .from('SpinHistory')
+    .select('id', { count: 'exact', head: true })
+    .eq('userId', userId)
+    .gte('createdAt', today.toISOString())
+    .lt('createdAt', tomorrow.toISOString());
+
+  let useExtra = false;
   if (todaySpins && todaySpins >= 1) {
-    throw new Error('You already used your free spin today');
+    // Check extra spins
+    const { data: user } = await supabase.from('User').select('extraSpins').eq('id', userId).single();
+    if (!user || (user.extraSpins || 0) <= 0) {
+      throw new Error('You already used your free spin today. Earn more spins by completing tasks!');
+    }
+    useExtra = true;
   }
 
   // Get reward pool
@@ -239,6 +272,12 @@ export async function doSpin(userId: string) {
 
   const amount = Number(selected.amount);
 
+  // Deduct extra spin if used
+  if (useExtra) {
+    const { data: u } = await supabase.from('User').select('extraSpins').eq('id', userId).single();
+    await supabase.from('User').update({ extraSpins: Math.max(0, (u?.extraSpins || 0) - 1) }).eq('id', userId);
+  }
+
   // Record spin
   await supabase.from('SpinHistory').insert({
     id: uuidv4(),
@@ -261,8 +300,6 @@ export async function doSpin(userId: string) {
       }
     } else if (selected.label.includes('XP')) {
       // Reward XP (Use existing addXP helper)
-      const { addXP } = require('./task'); // Use local helper to avoid circular if possible or just implement
-      // Implementing local XP add logic for stability
       const { data: u } = await supabase.from('User').select('xp, level, maxEnergy').eq('id', userId).single();
       if (u) {
         const newXP = (u.xp || 0) + amount;
@@ -278,6 +315,13 @@ export async function doSpin(userId: string) {
           await supabase.from('User').update({ xp: newXP, updatedAt: new Date().toISOString() }).eq('id', userId);
         }
       }
+    } else if (selected.label.includes('+Spin')) {
+      // Reward Extra Spin
+      const { data: u } = await supabase.from('User').select('extraSpins').eq('id', userId).single();
+      await supabase.from('User').update({ 
+        extraSpins: (u?.extraSpins || 0) + amount,
+        updatedAt: new Date().toISOString()
+      }).eq('id', userId);
     } else {
       // Reward TON (Wallet)
       const { data: wallet } = await supabase.from('Wallet').select('balance, totalEarned').eq('userId', userId).single();
@@ -304,11 +348,16 @@ export async function doSpin(userId: string) {
     }
   }
 
+  // Get final spin status
+  const finalStatus = await getSpinStatus(userId);
+
   return {
     reward: amount.toString(),
     label: selected.label,
     icon: selected.icon,
     color: selected.color,
+    canFreeSpin: finalStatus.canFreeSpin,
+    extraSpins: finalStatus.extraSpins,
   };
 }
 
@@ -318,11 +367,13 @@ export async function doSpin(userId: string) {
 export async function getReferralStats(userId: string) {
   const { data: user, error: userError } = await supabase
     .from('User')
-    .select('referralCode')
+    .select('referralCode, telegramId')
     .eq('id', userId)
     .single();
 
   if (userError || !user) throw new Error('User not found');
+
+  const referralLink = `https://t.me/ads_free_ton_bot/app?startapp=${user.telegramId}`;
 
   const { count: directReferrals, error: countError } = await supabase
     .from('User')
@@ -353,6 +404,7 @@ export async function getReferralStats(userId: string) {
 
   return {
     referralCode: user.referralCode,
+    referralLink,
     totalReferrals: directReferrals || 0,
     totalEarnings: totalEarnings.toString(),
     recentReferrals: recentReferrals || [],

@@ -30,6 +30,7 @@ import {
   getLeaderboard,
   getDailyTasks,
   claimDailyTask,
+  getSpinStatus,
   doSpin,
   getReferralStats,
   applyReferralCode,
@@ -303,6 +304,15 @@ app.post('/api/daily-tasks/:id/claim', authMiddleware, async (req: AuthRequest, 
     res.json(result);
   } catch (err: any) {
     res.status(400).json({ error: err.message });
+  }
+});
+
+app.get('/api/spin/status', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const result = await getSpinStatus(req.userId!);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 });
 

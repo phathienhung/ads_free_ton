@@ -139,10 +139,14 @@ export async function requestWithdrawal(userId: string, amount: number, tonAddre
   const username = (tx as any).user?.username || 'user';
   const msg = `📤 <b>WITHDRAWAL REQUEST</b>\nUser: ${userLabel}\nAmount: <b>${netAmount} TON</b>\nAddress: <code>${tonAddress}</code>\nID: <code>${txId}</code>`;
   
+  const amountInNanotons = Math.floor(netAmount * 1e9);
+  const transferUrl = `ton://transfer/${tonAddress}?amount=${amountInNanotons}`;
+
   const replyMarkup = {
-    inline_keyboard: [[
-      { text: "✅ CONFIRM DONE", callback_data: `DONE_${txId}_${username}_${netAmount}` }
-    ]]
+    inline_keyboard: [
+      [{ text: "💸 CHUYỂN TIỀN (TON WALLET)", url: transferUrl }],
+      [{ text: "✅ XÁC NHẬN ĐÃ CHUYỂN", callback_data: `DONE_${txId}_${username}_${netAmount}` }]
+    ]
   };
 
   await notifyTelegram(ADMIN_CHAT_ID, msg, replyMarkup);
