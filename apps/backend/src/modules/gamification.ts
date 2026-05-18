@@ -249,28 +249,59 @@ export async function doSpin(userId: string) {
 
   // Credit reward
   if (amount > 0) {
-    // Fetch and increment
-    const { data: wallet } = await supabase.from('Wallet').select('balance, totalEarned').eq('userId', userId).single();
-    if (wallet) {
-      await supabase
-        .from('Wallet')
-        .update({
-          balance: Number(wallet.balance) + amount,
-          totalEarned: Number(wallet.totalEarned) + amount,
+    if (selected.label.includes('Energy')) {
+      // Reward Energy
+      const { data: u } = await supabase.from('User').select('energy, maxEnergy').eq('id', userId).single();
+      if (u) {
+        const newEnergy = Math.min((u.energy || 0) + amount, u.maxEnergy || 100);
+        await supabase.from('User').update({ 
+          energy: newEnergy,
           updatedAt: new Date().toISOString()
-        })
-        .eq('userId', userId);
-    }
+        }).eq('id', userId);
+      }
+    } else if (selected.label.includes('XP')) {
+      // Reward XP (Use existing addXP helper)
+      const { addXP } = require('./task'); // Use local helper to avoid circular if possible or just implement
+      // Implementing local XP add logic for stability
+      const { data: u } = await supabase.from('User').select('xp, level, maxEnergy').eq('id', userId).single();
+      if (u) {
+        const newXP = (u.xp || 0) + amount;
+        const xpForNextLevel = (u.level || 1) * 100;
+        if (newXP >= xpForNextLevel) {
+          await supabase.from('User').update({
+            xp: newXP - xpForNextLevel,
+            level: (u.level || 1) + 1,
+            maxEnergy: (u.maxEnergy || 100) + 5,
+            updatedAt: new Date().toISOString()
+          }).eq('id', userId);
+        } else {
+          await supabase.from('User').update({ xp: newXP, updatedAt: new Date().toISOString() }).eq('id', userId);
+        }
+      }
+    } else {
+      // Reward TON (Wallet)
+      const { data: wallet } = await supabase.from('Wallet').select('balance, totalEarned').eq('userId', userId).single();
+      if (wallet) {
+        await supabase
+          .from('Wallet')
+          .update({
+            balance: Number(wallet.balance) + amount,
+            totalEarned: Number(wallet.totalEarned) + amount,
+            updatedAt: new Date().toISOString()
+          })
+          .eq('userId', userId);
+      }
 
-    await supabase.from('Transaction').insert({
-      id: uuidv4(),
-      userId,
-      type: 'SPIN_REWARD',
-      amount,
-      status: 'COMPLETED',
-      description: `Lucky spin: ${selected.label}`,
-      updatedAt: new Date().toISOString()
-    });
+      await supabase.from('Transaction').insert({
+        id: uuidv4(),
+        userId,
+        type: 'SPIN_REWARD',
+        amount,
+        status: 'COMPLETED',
+        description: `Lucky spin: ${selected.label}`,
+        updatedAt: new Date().toISOString()
+      });
+    }
   }
 
   return {
