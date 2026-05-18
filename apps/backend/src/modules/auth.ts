@@ -200,18 +200,23 @@ export function verifyToken(token: string): { userId: string; telegramId: string
 }
 
 /**
- * Serialize user for API response (handle BigInt)
+ * Serialize user for API response (handle BigInt and Decimal safely)
  */
 export function serializeUser(user: any) {
+  if (!user) return null;
+
+  // Supabase might return wallet as an array if it's a join
+  const walletData = Array.isArray(user.wallet) ? user.wallet[0] : user.wallet;
+
   return {
     ...user,
-    telegramId: user.telegramId.toString(),
-    wallet: user.wallet ? {
-      ...user.wallet,
-      balance: user.wallet.balance.toString(),
-      frozenBalance: user.wallet.frozenBalance.toString(),
-      totalEarned: user.wallet.totalEarned.toString(),
-      totalSpent: user.wallet.totalSpent.toString(),
+    telegramId: user.telegramId ? user.telegramId.toString() : null,
+    wallet: walletData ? {
+      ...walletData,
+      balance: walletData.balance?.toString() || "0",
+      frozenBalance: walletData.frozenBalance?.toString() || "0",
+      totalEarned: walletData.totalEarned?.toString() || "0",
+      totalSpent: walletData.totalSpent?.toString() || "0",
     } : null,
   };
 }
