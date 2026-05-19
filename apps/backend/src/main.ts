@@ -36,6 +36,7 @@ import {
   applyReferralCode,
 } from './modules/gamification';
 import { getAdminStats, getUsers, toggleBanUser, getPendingWithdrawals, getFraudLogs } from './modules/admin';
+import { handleTelegramWebhook } from './modules/webhook';
 import { supabase } from './lib/supabase';
 
 const app = express();
@@ -64,6 +65,9 @@ app.get('/api/health', async (_req, res) => {
     timestamp: new Date().toISOString() 
   });
 });
+
+// Telegram Webhook
+app.post('/api/webhook', handleTelegramWebhook);
 
 app.get('/api/health/supabase', async (_req, res) => {
   try {
