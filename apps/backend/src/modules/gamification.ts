@@ -1,6 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../lib/supabase';
 import { redis } from '../lib/redis';
+import { getGameConfig, EnergyParams } from '../lib/config';
+import { addXP } from './task';
 
 /**
  * Get leaderboard (earners, advertisers, or referrals)
@@ -290,31 +292,19 @@ export async function doSpin(userId: string) {
   if (amount > 0) {
     if (selected.label.includes('Energy')) {
       // Reward Energy
+      const config = await getGameConfig<EnergyParams>('energy_params');
       const { data: u } = await supabase.from('User').select('energy, maxEnergy').eq('id', userId).single();
       if (u) {
-        const newEnergy = Math.min((u.energy || 0) + amount, u.maxEnergy || 100);
+        const maxEnergy = u.maxEnergy || config.maxEnergy;
+        const newEnergy = Math.min((u.energy || 0) + amount, maxEnergy);
         await supabase.from('User').update({ 
           energy: newEnergy,
           updatedAt: new Date().toISOString()
         }).eq('id', userId);
       }
     } else if (selected.label.includes('XP')) {
-      // Reward XP (Use existing addXP helper)
-      const { data: u } = await supabase.from('User').select('xp, level, maxEnergy').eq('id', userId).single();
-      if (u) {
-        const newXP = (u.xp || 0) + amount;
-        const xpForNextLevel = (u.level || 1) * 100;
-        if (newXP >= xpForNextLevel) {
-          await supabase.from('User').update({
-            xp: newXP - xpForNextLevel,
-            level: (u.level || 1) + 1,
-            maxEnergy: (u.maxEnergy || 100) + 5,
-            updatedAt: new Date().toISOString()
-          }).eq('id', userId);
-        } else {
-          await supabase.from('User').update({ xp: newXP, updatedAt: new Date().toISOString() }).eq('id', userId);
-        }
-      }
+      // Reward XP (Use shared addXP helper)
+      await addXP(userId, amount);
     } else if (selected.label.includes('+Spin')) {
       // Reward Extra Spin
       const { data: u } = await supabase.from('User').select('extraSpins').eq('id', userId).single();

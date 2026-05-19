@@ -126,13 +126,13 @@ export default function SpinPage() {
                   x={textX}
                   y={textY}
                   fill="white"
-                  fontSize="10"
+                  fontSize="8"
                   fontWeight="900"
                   textAnchor="middle"
                   dominantBaseline="central"
                   transform={`rotate(${textRotate}, ${textX}, ${textY})`}
                 >
-                  {seg.icon}
+                  {seg.label}
                 </text>
               </g>
             );
@@ -147,7 +147,7 @@ export default function SpinPage() {
           disabled={spinning || (!status?.canFreeSpin && (status?.extraSpins || 0) <= 0)}
           style={{ 
             opacity: (spinning || (!status?.canFreeSpin && (status?.extraSpins || 0) <= 0)) ? 0.6 : 1,
-            transform: spinning ? 'scale(0.95)' : 'scale(1)'
+            transform: spinning ? 'translate(-50%, -50%) scale(0.95)' : 'translate(-50%, -50%) scale(1)'
            }}
         >
           {spinning ? '...' : (status?.canFreeSpin ? 'FREE SPIN' : 'USE EXTRA')}

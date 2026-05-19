@@ -1,9 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../lib/supabase';
 import { redis } from '../lib/redis';
+import { getGameConfig, EnergyParams, LevelingParams } from '../lib/config';
 
-const ENERGY_REGEN_RATE = 1; // 1 energy per 5 minutes
-const ENERGY_REGEN_INTERVAL = 5 * 60 * 1000; // 5 minutes in ms
 const TASK_ENERGY_COST = 1;
 const MIN_VERIFICATION_DELAY = 30 * 1000; // 30 seconds minimum
 const REFERRAL_COMMISSIONS = [0.10, 0.05, 0.02]; // Level 1: 10%, Level 2: 5%, Level 3: 2%
@@ -251,12 +250,18 @@ export async function getUserWithEnergy(userId: string) {
   const { data: user, error } = await supabase.from('User').select('*').eq('id', userId).single();
   if (error || !user) throw new Error('User not found');
 
+  const config = await getGameConfig<EnergyParams>('energy_params');
+  const regenInterval = config.recoverSeconds * 1000;
+  const regenAmountPerInterval = config.recoverAmount || 1;
+
   const now = Date.now();
   const elapsed = now - new Date(user.energyUpdatedAt).getTime();
-  const regenAmount = Math.floor(elapsed / ENERGY_REGEN_INTERVAL) * ENERGY_REGEN_RATE;
+  const regenAmount = Math.floor(elapsed / regenInterval) * regenAmountPerInterval;
 
-  if (regenAmount > 0 && user.energy < user.maxEnergy) {
-    const newEnergy = Math.min(user.energy + regenAmount, user.maxEnergy);
+  const maxEnergy = user.maxEnergy || config.maxEnergy;
+
+  if (regenAmount > 0 && user.energy < maxEnergy) {
+    const newEnergy = Math.min(user.energy + regenAmount, maxEnergy);
     await supabase
       .from('User')
       .update({ 
@@ -265,21 +270,23 @@ export async function getUserWithEnergy(userId: string) {
         updatedAt: new Date().toISOString()
       })
       .eq('id', userId);
-    return { ...user, energy: newEnergy };
+    return { ...user, energy: newEnergy, maxEnergy };
   }
 
-  return user;
+  return { ...user, maxEnergy };
 }
 
 /**
  * Add XP and handle level ups
  */
-async function addXP(userId: string, amount: number) {
+export async function addXP(userId: string, amount: number) {
   const { data: user } = await supabase.from('User').select('*').eq('id', userId).single();
   if (!user) return;
 
+  const config = await getGameConfig<LevelingParams>('leveling_params');
+  
   const newXP = (user.xp || 0) + amount;
-  const xpForNextLevel = (user.level || 1) * 100;
+  const xpForNextLevel = config.initialMaxXp + ((user.level || 1) - 1) * config.xpStepPerLevel;
 
   if (newXP >= xpForNextLevel) {
     await supabase
@@ -287,7 +294,7 @@ async function addXP(userId: string, amount: number) {
       .update({
         xp: newXP - xpForNextLevel,
         level: (user.level || 1) + 1,
-        maxEnergy: (user.maxEnergy || 100) + 5,
+        maxEnergy: (user.maxEnergy || 100) + config.energyBonusPerLevel,
         updatedAt: new Date().toISOString()
       })
       .eq('id', userId);
