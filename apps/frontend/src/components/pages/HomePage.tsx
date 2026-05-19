@@ -112,11 +112,11 @@ export default function HomePage() {
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12 }}>
           <span style={{ fontSize: 13, fontWeight: 600 }}>🏆 Level {user?.level}</span>
-          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>XP: {user?.xp}/{(user?.level || 1) * 100}</span>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>XP: {user?.xp}/{user?.xpForNextLevel || 100}</span>
         </div>
         <div className="progress-bar" style={{ marginTop: 6 }}>
           <div className="progress-fill" style={{
-            width: `${((user?.xp || 0) / ((user?.level || 1) * 100)) * 100}%`,
+            width: `${((user?.xp || 0) / (user?.xpForNextLevel || 100)) * 100}%`,
           }} />
         </div>
       </div>

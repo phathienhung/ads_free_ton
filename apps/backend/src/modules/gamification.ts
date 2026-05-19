@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { redis } from '../lib/redis';
 import { getGameConfig, EnergyParams } from '../lib/config';
 import { addXP } from './task';
+import { getWithdrawalLimit } from './wallet';
 
 /**
  * Get leaderboard (earners, advertisers, or referrals)
@@ -392,11 +393,15 @@ export async function getReferralStats(userId: string) {
 
   if (recentError) throw recentError;
 
+  // Get current withdrawal limit
+  const withdrawalLimit = await getWithdrawalLimit(userId);
+
   return {
     referralCode: user.referralCode,
     referralLink,
     totalReferrals: directReferrals || 0,
     totalEarnings: totalEarnings.toString(),
+    withdrawalLimit: withdrawalLimit.toString(),
     recentReferrals: recentReferrals || [],
   };
 }

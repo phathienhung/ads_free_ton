@@ -76,7 +76,7 @@ export default function ReferralPage() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
         <div className="glass-card stat-card animate-fade-in" style={{ animationDelay: '0.1s' }}>
           <div className="stat-value">{stats?.totalReferrals || 0}</div>
           <div className="stat-label">Total Referrals</div>
@@ -86,6 +86,13 @@ export default function ReferralPage() {
             {parseFloat(stats?.totalEarnings || '0').toFixed(4)}
           </div>
           <div className="stat-label">Total Earned</div>
+        </div>
+      </div>
+
+      <div className="glass-card animate-fade-in" style={{ padding: '12px 16px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Daily Withdrawal Limit</div>
+        <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--accent-orange)' }}>
+          {stats?.withdrawalLimit || '0'} TON
         </div>
       </div>
 

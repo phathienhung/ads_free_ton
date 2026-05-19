@@ -75,8 +75,18 @@ export async function handleTelegramWebhook(req: Request, res: Response) {
               parse_mode: 'HTML'
             })
           });
+
+          // Delete admin notification message
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/deleteMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: ADMIN_CHAT_ID,
+              message_id: cb.message.message_id
+            })
+          });
           
-          console.log(`Withdrawal ${txId} confirmed successfully via webhook`);
+          console.log(`Withdrawal ${txId} confirmed and message deleted`);
         }
 
         // Answer callback to remove loading state

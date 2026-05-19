@@ -10,6 +10,7 @@ interface User {
   photoUrl: string | null;
   level: number;
   xp: number;
+  xpForNextLevel: number;
   energy: number;
   maxEnergy: number;
   referralCode: string;

@@ -100,6 +100,12 @@ export async function requestWithdrawal(userId: string, amount: number, tonAddre
     throw new Error(`Minimum withdrawal is ${MIN_WITHDRAWAL}`);
   }
 
+  // Check milestone limit
+  const limit = await getWithdrawalLimit(userId);
+  if (amount > limit) {
+    throw new Error(`Your current daily withdrawal limit is ${limit} TON. Invite more friends to increase your limit!`);
+  }
+
   const { data: wallet } = await supabase.from('Wallet').select('balance, frozenBalance').eq('userId', userId).single();
   if (!wallet || Number(wallet.balance) < amount) {
     throw new Error('Insufficient balance');
@@ -250,4 +256,36 @@ export async function processWithdrawal(
   });
 
   return { status };
+}
+
+/**
+ * Get current withdrawal limit based on referral milestones
+ */
+export async function getWithdrawalLimit(userId: string): Promise<number> {
+  // 1. Count referrals
+  const { count, error } = await supabase
+    .from('User')
+    .select('id', { count: 'exact', head: true })
+    .eq('referredById', userId);
+
+  if (error) return 0;
+  const referralCount = count || 0;
+
+  // 2. Fetch milestones
+  const { data: milestones } = await supabase
+    .from('ReferralMilestone')
+    .select('*')
+    .order('target', { ascending: false });
+
+  if (!milestones || milestones.length === 0) return 0.1; // Default low limit if table empty
+
+  // 3. Find highest reached milestone
+  const achieved = milestones.find(m => referralCount >= m.target);
+  
+  if (!achieved) {
+    // If even the lowest target (e.g. 1) isn't reached
+    return 0; 
+  }
+
+  return Number(achieved.withdrawalLimit);
 }

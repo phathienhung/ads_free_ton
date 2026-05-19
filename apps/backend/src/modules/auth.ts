@@ -20,6 +20,7 @@ export interface TelegramInitData {
   };
   auth_date: number;
   hash: string;
+  start_param?: string;
 }
 
 /**
@@ -58,6 +59,7 @@ export function validateInitData(initDataRaw: string): TelegramInitData | null {
       user,
       auth_date: authDate,
       hash,
+      start_param: urlParams.get('start_param') || undefined,
     };
   } catch (error) {
     console.error('initData validation error:', error);
@@ -96,6 +98,33 @@ export async function authenticateUser(initDataRaw: string, ipAddress?: string, 
 
   if (!user) {
     const userId = uuidv4();
+    // Referral Attribution
+    let referredById: string | null = null;
+    if (initData.start_param) {
+      // Find referrer by telegramId (as the link is startapp=[telegramId])
+      const { data: referrer } = await supabase
+        .from('User')
+        .select('id, extraSpins, energy, maxEnergy')
+        .eq('telegramId', initData.start_param)
+        .single();
+      
+      if (referrer && referrer.id !== userId) {
+        referredById = referrer.id;
+        
+        // Reward referrer: +1 extraSpin and +1 energy
+        await supabase
+          .from('User')
+          .update({
+            extraSpins: (referrer.extraSpins || 0) + 1,
+            energy: Math.min((referrer.energy || 0) + 1, (referrer.maxEnergy || 100)),
+            updatedAt: new Date().toISOString()
+          })
+          .eq('id', referrer.id);
+        
+        console.log(`Referral credited: ${referrer.id} invited ${userId}`);
+      }
+    }
+
     // Create user with explicit NOT NULL fields
     const { data: newUser, error: createError } = await supabase
       .from('User')
@@ -108,6 +137,7 @@ export async function authenticateUser(initDataRaw: string, ipAddress?: string, 
         photoUrl: tgUser.photo_url,
         languageCode: tgUser.language_code || 'en',
         referralCode: generateReferralCode(),
+        referredById, // Set referrer!
         lastIp: ipAddress,
         role: 'USER',
         level: 1,

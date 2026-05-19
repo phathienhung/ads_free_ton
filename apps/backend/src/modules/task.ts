@@ -260,20 +260,30 @@ export async function getUserWithEnergy(userId: string) {
 
   const maxEnergy = user.maxEnergy || config.maxEnergy;
 
+  let currentEnergy = user.energy;
+
   if (regenAmount > 0 && user.energy < maxEnergy) {
-    const newEnergy = Math.min(user.energy + regenAmount, maxEnergy);
+    currentEnergy = Math.min(user.energy + regenAmount, maxEnergy);
     await supabase
       .from('User')
       .update({ 
-        energy: newEnergy, 
+        energy: currentEnergy,
         energyUpdatedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       })
       .eq('id', userId);
-    return { ...user, energy: newEnergy, maxEnergy };
   }
 
-  return { ...user, maxEnergy };
+  // Get dynamic leveling params for UI
+  const levelingConfig = await getGameConfig<LevelingParams>('leveling_params');
+  const xpForNextLevel = levelingConfig.initialMaxXp + ((user.level || 1) - 1) * levelingConfig.xpStepPerLevel;
+
+  return { 
+    ...user, 
+    energy: currentEnergy, 
+    maxEnergy,
+    xpForNextLevel,
+  };
 }
 
 /**
