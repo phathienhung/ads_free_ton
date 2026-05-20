@@ -104,7 +104,8 @@ export default function ReferralPage() {
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {stats?.milestones?.map((m: any, i: number) => {
-            const isReached = (stats?.totalReferrals || 0) >= m.target;
+            const achievedArr: number[] = Array.isArray(stats?.milestonesAchieved) ? stats.milestonesAchieved : [];
+            const isReached = achievedArr.includes(m.target);
             return (
               <div key={i} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',

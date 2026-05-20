@@ -96,6 +96,10 @@ class ApiClient {
     return this.request<any>(`/api/tasks/${campaignId}/start`, { method: 'POST' });
   }
 
+  verifyTask(campaignId: string) {
+    return this.request<any>(`/api/tasks/${campaignId}/verify`, { method: 'POST' });
+  }
+
   completeTask(campaignId: string) {
     return this.request<any>(`/api/tasks/${campaignId}/complete`, { method: 'POST' });
   }

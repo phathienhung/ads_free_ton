@@ -17,6 +17,7 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [startedTasks, setStartedTasks] = useState<Set<string>>(new Set());
+  const [verifiedTasks, setVerifiedTasks] = useState<Set<string>>(new Set());
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
   const [dailyTasks, setDailyTasks] = useState<any[]>([]);
 
@@ -45,11 +46,13 @@ export default function TasksPage() {
     setLoading(false);
   }
 
-  async function handleStart(campaignId: string) {
+  async function handleVerify(campaignId: string) {
     try {
       setActionLoading(campaignId);
-      await api.startTask(campaignId);
-      setStartedTasks((s) => new Set(s).add(campaignId));
+      // Ensure it is started, wait briefly to ensure state
+      await api.startTask(campaignId).catch(() => {});
+      await api.verifyTask(campaignId);
+      setVerifiedTasks((s) => new Set(s).add(campaignId));
     } catch (err: any) {
       alert(err.message);
     }
@@ -158,7 +161,7 @@ export default function TasksPage() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {filtered.map((c, i) => {
-            const isStarted = startedTasks.has(c.id);
+            const isVerified = verifiedTasks.has(c.id) || completedTasks.has(c.id);
             const isCompleted = completedTasks.has(c.id);
             const isProcessing = actionLoading === c.id;
 
@@ -201,13 +204,13 @@ export default function TasksPage() {
                   <button className="btn btn-success btn-full" disabled>
                     ✅ Completed
                   </button>
-                ) : isStarted ? (
+                ) : isVerified ? (
                   <button
                     className="btn btn-success btn-full"
                     disabled={isProcessing}
                     onClick={() => handleComplete(c.id)}
                   >
-                    {isProcessing ? '⏳ Verifying...' : '🎁 Claim Reward'}
+                    {isProcessing ? '⏳ Claiming...' : '🎁 Claim Reward'}
                   </button>
                 ) : (
                   <div style={{ display: 'flex', gap: 8 }}>
@@ -217,6 +220,10 @@ export default function TasksPage() {
                       rel="noopener"
                       className="btn btn-ghost"
                       style={{ flex: 1, textDecoration: 'none' }}
+                      onClick={async () => {
+                        // Optimistically start the task in background
+                        await api.startTask(c.id).catch(() => {});
+                      }}
                     >
                       {c.type === 'CHANNEL' || c.type === 'GROUP' ? '📢 Join' :
                        c.type === 'BOT' ? '🤖 Start Bot' : '🌐 Visit'}
@@ -225,9 +232,9 @@ export default function TasksPage() {
                       className="btn btn-primary"
                       style={{ flex: 1 }}
                       disabled={isProcessing}
-                      onClick={() => handleStart(c.id)}
+                      onClick={() => handleVerify(c.id)}
                     >
-                      {isProcessing ? '⏳...' : '✅ I Did It'}
+                      {isProcessing ? '⏳ Checking...' : '✅ I Did It'}
                     </button>
                   </div>
                 )}

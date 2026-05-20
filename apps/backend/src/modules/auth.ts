@@ -130,12 +130,17 @@ export async function authenticateUser(initDataRaw: string, ipAddress?: string, 
           .eq('target', newCount)
           .single();
 
+        const prevMilestones = Array.isArray(referrer.milestonesAchieved) ? referrer.milestonesAchieved : [];
+        const updatedMilestones = milestoneReached 
+          ? [...prevMilestones, milestoneReached.target]
+          : prevMilestones;
+
         await supabase
           .from('User')
           .update({
             extraSpins: (referrer.extraSpins || 0) + (rewards.spinBonus || 1),
             energy: Math.min((referrer.energy || 0) + (rewards.energyBonus || 1), (referrer.maxEnergy || 100)),
-            milestonesAchieved: milestoneReached ? (referrer.milestonesAchieved || 0) + 1 : (referrer.milestonesAchieved || 0),
+            milestonesAchieved: updatedMilestones,
             updatedAt: new Date().toISOString()
           })
           .eq('id', referrer.id);

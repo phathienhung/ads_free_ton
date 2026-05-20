@@ -18,6 +18,27 @@ export default function HomePage() {
   const [stats, setStats] = useState({ totalTasks: 0, totalEarned: '0' });
   const [loading, setLoading] = useState(true);
 
+  const recoverSeconds = useAppStore(state => state.gameConfig?.energy?.recoverSeconds || 300);
+  const [countdown, setCountdown] = useState('');
+
+  useEffect(() => {
+    if (!user || user.energy >= user.maxEnergy) {
+      setCountdown('');
+      return;
+    }
+    const tick = () => {
+      const elapsed = (Date.now() - new Date(user.energyUpdatedAt || Date.now()).getTime()) / 1000;
+      const sinceLastRegen = elapsed % recoverSeconds;
+      const remaining = Math.max(0, recoverSeconds - sinceLastRegen);
+      const mins = Math.floor(remaining / 60);
+      const secs = Math.floor(remaining % 60);
+      setCountdown(`${mins}:${secs.toString().padStart(2, '0')}`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [user, recoverSeconds]);
+
   useEffect(() => {
     async function load() {
       try {
@@ -48,9 +69,16 @@ export default function HomePage() {
           <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>Welcome back</div>
           <div style={{ fontSize: 20, fontWeight: 800 }}>{user?.firstName || user?.username || 'User'} 👋</div>
         </div>
-        <div className="energy-bar">
-          <span className="energy-icon">⚡</span>
-          <span>{user?.energy || 0}/{user?.maxEnergy || 100}</span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+          <div className="energy-bar">
+            <span className="energy-icon">⚡</span>
+            <span>{user?.energy || 0}/{user?.maxEnergy || 100}</span>
+          </div>
+          {countdown && (
+            <div style={{ fontSize: 11, color: 'var(--accent-blue)', fontFamily: 'var(--font-mono)', fontWeight: 700, marginTop: 4 }}>
+              ⏱ {countdown}
+            </div>
+          )}
         </div>
       </div>
 
@@ -100,6 +128,17 @@ export default function HomePage() {
 
       {/* Energy & Level Progress */}
       <div className="glass-card animate-fade-in" style={{ padding: 16, marginBottom: 20 }}>
+        {countdown && (
+          <div style={{
+            textAlign: 'center', marginBottom: 10, padding: '6px 0',
+            background: 'rgba(59,130,246,0.08)', borderRadius: 'var(--radius-md)',
+          }}>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', marginRight: 6 }}>⏱ Next energy in</span>
+            <span style={{ fontSize: 16, fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--accent-blue)' }}>
+              {countdown}
+            </span>
+          </div>
+        )}
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
           <span style={{ fontSize: 13, fontWeight: 600 }}>⚡ Energy</span>
           <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{user?.energy}/{user?.maxEnergy}</span>

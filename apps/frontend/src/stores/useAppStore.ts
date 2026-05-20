@@ -13,6 +13,8 @@ interface User {
   xpForNextLevel: number;
   energy: number;
   maxEnergy: number;
+  energyUpdatedAt: string;
+  milestonesAchieved: number[];
   referralCode: string;
   role: string;
   wallet: {

@@ -185,23 +185,26 @@ export default function AdvertiserPage() {
             <div>
               <label className="input-label">Price Per Action (TON)</label>
               <input className="input-field" type="number" step="0.001"
-                value={form.pricePerAction} onChange={(e) => setForm({ ...form, pricePerAction: e.target.value })} />
+                value={form.pricePerAction} readOnly
+                style={{ opacity: 0.7, cursor: 'not-allowed' }} />
             </div>
             <div>
               <label className="input-label">Total Budget (TON)</label>
-              <input className="input-field" type="number" step="0.01"
+              <input className="input-field" type="number" step="0.01" min="0.1"
                 value={form.totalBudget} onChange={(e) => setForm({ ...form, totalBudget: e.target.value })} />
+              {form.totalBudget && parseFloat(form.totalBudget) < 0.1 && (
+                <div style={{ fontSize: 11, color: 'var(--accent-red)', marginTop: 4 }}>
+                  ⚠️ Minimum total budget is 0.1 TON
+                </div>
+              )}
             </div>
           </div>
 
           <div style={{ marginBottom: 16 }}>
             <label className="input-label">Pricing Model</label>
-            <select className="input-field" value={form.pricingModel}
-              onChange={(e) => setForm({ ...form, pricingModel: e.target.value })}>
-              <option value="CPE">CPE — Cost per Engagement</option>
-              <option value="CPC">CPC — Cost per Click</option>
-              <option value="CPM">CPM — Cost per 1000 Impressions</option>
-            </select>
+            <div className="input-field" style={{ opacity: 0.7, cursor: 'not-allowed', display: 'flex', alignItems: 'center' }}>
+              CPE — Cost per Engagement
+            </div>
           </div>
 
           {/* Summary */}
@@ -227,15 +230,12 @@ export default function AdvertiserPage() {
 
           <button
             className="btn btn-primary btn-full btn-lg"
-            disabled={!form.title || !form.targetUrl || !form.pricePerAction || !form.totalBudget || creating}
+            disabled={!form.title || !form.targetUrl || !form.pricePerAction || !form.totalBudget || parseFloat(form.totalBudget) < 0.1 || creating}
             onClick={handleCreate}
           >
             {creating ? '⏳ Creating...' : '🚀 Create Campaign'}
           </button>
 
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 12 }}>
-            Campaign will be reviewed before going live
-          </div>
         </div>
       )}
     </div>

@@ -236,6 +236,16 @@ app.post('/api/tasks/:campaignId/start', authMiddleware, async (req: AuthRequest
   }
 });
 
+app.post('/api/tasks/:campaignId/verify', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const { verifyTaskAction } = await import('./modules/task');
+    const result = await verifyTaskAction(req.userId!, req.params.campaignId as string);
+    res.json(result);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 app.post('/api/tasks/:campaignId/complete', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const result = await completeTask(req.userId!, req.params.campaignId as string);

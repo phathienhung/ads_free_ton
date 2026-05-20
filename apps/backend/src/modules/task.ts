@@ -114,30 +114,12 @@ export async function completeTask(userId: string, campaignId: string) {
     .single();
 
   if (fetchError || !taskCompletion) throw new Error('Task not found');
-  if (taskCompletion.status !== 'STARTED') throw new Error('Task already processed');
+  if (taskCompletion.status === 'REWARDED') throw new Error('Task already rewarded');
 
   const { data: campaign, error: campError } = await supabase.from('Campaign').select('*').eq('id', campaignId).single();
   if (campError || !campaign) throw new Error('Campaign not found');
 
-  // New Verification Logic
-  const user = await supabase.from('User').select('telegramId').eq('id', userId).single();
-  if (!user.data?.telegramId) throw new Error('Telegram ID not found');
-
-  const isVerified = await verifyTelegramTask(user.data.telegramId.toString(), campaign);
-  if (!isVerified) {
-    if (campaign.type === 'WEBSITE' || campaign.type === 'MINI_APP') {
-       throw new Error('Please open the link first and wait a few seconds.');
-    }
-    throw new Error(`Please join/start the ${campaign.type.toLowerCase()} before claiming.`);
-  }
-
-  // Verify minimum time elapsed (anti-fraud) for WEB/APP
-  if (campaign.type === 'WEBSITE' || campaign.type === 'MINI_APP') {
-    const elapsed = Date.now() - new Date(taskCompletion.startedAt).getTime();
-    if (elapsed < MIN_VERIFICATION_DELAY) {
-      throw new Error('Please wait before claiming. Minimum verification time not met.');
-    }
-  }
+  if (taskCompletion.status !== 'VERIFIED') throw new Error('Task must be verified first.');
 
   const rewardAmount = Number(campaign.pricePerAction);
 
@@ -253,6 +235,51 @@ async function verifyTelegramTask(telegramId: string, campaign: any): Promise<bo
   }
 
   return true;
+}
+
+/**
+ * Verify task action endpoint logic
+ */
+export async function verifyTaskAction(userId: string, campaignId: string) {
+  const { data: taskCompletion, error: fetchError } = await supabase
+    .from('TaskCompletion')
+    .select('*')
+    .eq('userId', userId)
+    .eq('campaignId', campaignId)
+    .single();
+
+  if (fetchError || !taskCompletion) throw new Error('Please start the task first');
+  // Allow re-verification if failed or started
+  if (taskCompletion.status === 'REWARDED') throw new Error('Already rewarded');
+  if (taskCompletion.status === 'VERIFIED') return { success: true };
+
+  const { data: campaign, error: campError } = await supabase.from('Campaign').select('*').eq('id', campaignId).single();
+  if (campError || !campaign) throw new Error('Campaign not found');
+
+  const user = await supabase.from('User').select('telegramId').eq('id', userId).single();
+  if (!user.data?.telegramId) throw new Error('Telegram ID not found');
+
+  const isVerified = await verifyTelegramTask(user.data.telegramId.toString(), campaign);
+  if (!isVerified) {
+    if (campaign.type === 'WEBSITE' || campaign.type === 'MINI_APP') {
+       throw new Error('Please open the link first and wait a few seconds.');
+    }
+    throw new Error(`Please join/start the ${campaign.type.toLowerCase()} exactly as requested.`);
+  }
+
+  if (campaign.type === 'WEBSITE' || campaign.type === 'MINI_APP') {
+    const elapsed = Date.now() - new Date(taskCompletion.startedAt).getTime();
+    if (elapsed < MIN_VERIFICATION_DELAY) {
+      throw new Error(`Please wait at least ${MIN_VERIFICATION_DELAY / 1000}s on the page.`);
+    }
+  }
+
+  await supabase
+    .from('TaskCompletion')
+    .update({ status: 'VERIFIED', verifiedAt: new Date().toISOString() })
+    .eq('id', taskCompletion.id);
+
+  return { success: true };
 }
 
 /**

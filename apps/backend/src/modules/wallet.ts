@@ -289,30 +289,35 @@ export async function getWithdrawalTotalToday(userId: string): Promise<number> {
  * Get current withdrawal limit based on referral milestones
  */
 export async function getWithdrawalLimit(userId: string): Promise<number> {
-  // 1. Count referrals
-  const { count, error } = await supabase
+  const { data: user, error: userError } = await supabase
     .from('User')
-    .select('id', { count: 'exact', head: true })
-    .eq('referredById', userId);
+    .select('milestonesAchieved')
+    .eq('id', userId)
+    .single();
 
-  if (error) return 0;
-  const referralCount = count || 0;
+  if (userError || !user) return 0;
 
-  // 2. Fetch milestones
+  const milestonesArray = Array.isArray(user.milestonesAchieved) ? user.milestonesAchieved : [];
+  
+  // 1. Fetch available milestones from system
   const { data: milestones } = await supabase
     .from('ReferralMilestone')
     .select('*')
     .order('target', { ascending: false });
 
-  if (!milestones || milestones.length === 0) return 0.1; // Default low limit if table empty
+  if (!milestones || milestones.length === 0) return 0.1;
 
-  // 3. Find highest reached milestone
-  const achieved = milestones.find(m => referralCount >= m.target);
+  // 2. Find the highest achieved milestone using the JSONB array
+  let maxTarget = 0;
+  if (milestonesArray.length > 0) {
+    maxTarget = Math.max(...milestonesArray.map(m => Number(m)));
+  }
+
+  const achieved = milestones.find(m => maxTarget >= m.target);
   
   if (!achieved) {
-    // If even the lowest target (e.g. 1) isn't reached
     return 0; 
   }
 
-  return Number(achieved.withdrawalLimit);
+  return Number(achieved.limit);
 }
