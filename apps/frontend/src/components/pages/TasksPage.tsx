@@ -18,10 +18,21 @@ export default function TasksPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [startedTasks, setStartedTasks] = useState<Set<string>>(new Set());
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
+  const [dailyTasks, setDailyTasks] = useState<any[]>([]);
 
   useEffect(() => {
     loadCampaigns();
+    loadDailyTasks();
   }, []);
+
+  async function loadDailyTasks() {
+    try {
+      const data = await api.getDailyTasks();
+      setDailyTasks(data);
+    } catch (err) {
+      console.error('Daily tasks load error:', err);
+    }
+  }
 
   async function loadCampaigns() {
     try {
@@ -52,6 +63,20 @@ export default function TasksPage() {
       setCompletedTasks((s) => new Set(s).add(campaignId));
       showReward(result.reward, `Task: ${result.campaignTitle}`);
       await refreshUser();
+      await loadCampaigns(); // Refresh campaigns to show completion
+    } catch (err: any) {
+      alert(err.message);
+    }
+    setActionLoading(null);
+  }
+
+  async function handleClaimDaily(taskId: string) {
+    try {
+      setActionLoading(`daily-${taskId}`);
+      const result = await api.claimDailyTask(taskId);
+      showReward(result.coinReward, 'Daily Bonus Claimed!');
+      await refreshUser();
+      await loadDailyTasks();
     } catch (err: any) {
       alert(err.message);
     }
@@ -68,17 +93,55 @@ export default function TasksPage() {
       </div>
 
       {/* Filter Tabs */}
-      <div className="tabs">
-        {typeFilters.map((f) => (
+      <div className="tabs" style={{ overflowX: 'auto', paddingBottom: 4 }}>
+        {['ALL', 'DAILY', ...typeFilters.slice(1)].map((f) => (
           <button
             key={f}
             className={`tab ${filter === f ? 'active' : ''}`}
             onClick={() => setFilter(f)}
+            style={{ whiteSpace: 'nowrap' }}
           >
-            {f === 'ALL' ? '🔥 All' : `${typeIcons[f]} ${f.charAt(0) + f.slice(1).toLowerCase()}`}
+            {f === 'ALL' ? '🔥 All' : f === 'DAILY' ? '📅 Daily' : `${typeIcons[f]} ${f.charAt(0) + f.slice(1).toLowerCase()}`}
           </button>
         ))}
       </div>
+
+      {/* Daily Tasks Section (Sticky/Pinned if not filtered out) */}
+      {(filter === 'ALL' || filter === 'DAILY') && dailyTasks.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <h2 className="section-title" style={{ marginBottom: 0, fontSize: 18 }}>📅 Daily Rewards</h2>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {dailyTasks.map((dt) => (
+              <div key={dt.id} className="glass-card" style={{ padding: 12, borderLeft: dt.completed && !dt.claimed ? '4px solid var(--accent-green)' : 'none' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <div style={{ fontSize: 24 }}>{dt.icon || '🎁'}</div>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 700 }}>{dt.title}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Reward: {dt.coinReward} TON + {dt.xpReward} XP</div>
+                    </div>
+                  </div>
+                  {dt.claimed ? (
+                    <span className="badge badge-gray">Claimed</span>
+                  ) : dt.completed ? (
+                    <button 
+                      className="btn btn-primary btn-sm" 
+                      onClick={() => handleClaimDaily(dt.id)}
+                      disabled={actionLoading === `daily-${dt.id}`}
+                    >
+                      {actionLoading === `daily-${dt.id}` ? '...' : 'Claim'}
+                    </button>
+                  ) : (
+                    <span className="badge badge-blue">{dt.progress || 0}/{dt.target}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Tasks List */}
       {loading ? (

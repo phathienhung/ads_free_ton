@@ -107,7 +107,7 @@ export async function getDailyTasks(userId: string) {
     .from('UserDailyTask')
     .select('*')
     .eq('userId', userId)
-    .eq('date', today.toISOString().split('T')[0]);
+    .or(`date.eq.${today.toISOString().split('T')[0]},and(completed.eq.true,claimed.eq.false)`);
 
   if (progressError) throw progressError;
 
@@ -137,7 +137,9 @@ export async function claimDailyTask(userId: string, dailyTaskId: string) {
     .select('*')
     .eq('userId', userId)
     .eq('dailyTaskId', dailyTaskId)
-    .eq('date', today.toISOString().split('T')[0])
+    .eq('completed', true)
+    .eq('claimed', false)
+    .limit(1)
     .single();
 
   if (fetchError || !progress || !progress.completed || progress.claimed) {
@@ -306,11 +308,11 @@ export async function doSpin(userId: string) {
     } else if (selected.label.includes('XP')) {
       // Reward XP (Use shared addXP helper)
       await addXP(userId, amount);
-    } else if (selected.label.includes('+Spin')) {
+    } else if (selected.label.includes('+Spin') || selected.type === 'SPIN') {
       // Reward Extra Spin
       const { data: u } = await supabase.from('User').select('extraSpins').eq('id', userId).single();
       await supabase.from('User').update({ 
-        extraSpins: (u?.extraSpins || 0) + amount,
+        extraSpins: (u?.extraSpins || 0) + (amount || 1),
         updatedAt: new Date().toISOString()
       }).eq('id', userId);
     } else {
@@ -358,7 +360,7 @@ export async function doSpin(userId: string) {
 export async function getReferralStats(userId: string) {
   const { data: user, error: userError } = await supabase
     .from('User')
-    .select('referralCode, telegramId')
+    .select('referralCode, telegramId, milestonesAchieved')
     .eq('id', userId)
     .single();
 
@@ -408,6 +410,7 @@ export async function getReferralStats(userId: string) {
     withdrawalLimit: withdrawalLimit.toString(),
     milestones: milestones || [],
     recentReferrals: recentReferrals || [],
+    milestonesAchieved: user.milestonesAchieved || 0,
   };
 }
 
@@ -421,12 +424,31 @@ export async function applyReferralCode(userId: string, referralCode: string) {
 
   const { data: referrer, error: refError } = await supabase
     .from('User')
-    .select('id, username, firstName')
+    .select('id, username, firstName, extraSpins, energy, maxEnergy, milestonesAchieved')
     .eq('referralCode', referralCode)
     .single();
 
   if (refError || !referrer) throw new Error('Invalid referral code');
   if (referrer.id === userId) throw new Error('Cannot refer yourself');
+
+  // Reward referrer: Fetch from config
+  const refRewards = await supabase.from('GameConfig').select('value').eq('key', 'referral_rewards').single();
+  const rewards = refRewards.data?.value as any || { spinBonus: 1, energyBonus: 1 };
+
+  // Count referrals to check milestones
+  const { count: referralCount } = await supabase
+    .from('User')
+    .select('id', { count: 'exact', head: true })
+    .eq('referredById', referrer.id);
+  
+  const newCount = (referralCount || 0) + 1;
+  
+  // Find if this newCount reaches any milestone
+  const { data: milestoneReached } = await supabase
+    .from('ReferralMilestone')
+    .select('target')
+    .eq('target', newCount)
+    .single();
 
   await supabase
     .from('User')
@@ -435,6 +457,16 @@ export async function applyReferralCode(userId: string, referralCode: string) {
       updatedAt: new Date().toISOString()
     })
     .eq('id', userId);
+
+  await supabase
+    .from('User')
+    .update({
+      extraSpins: (referrer.extraSpins || 0) + (rewards.spinBonus || 1),
+      energy: Math.min((referrer.energy || 0) + (rewards.energyBonus || 1), (referrer.maxEnergy || 100)),
+      milestonesAchieved: milestoneReached ? (referrer.milestonesAchieved || 0) + 1 : (referrer.milestonesAchieved || 0),
+      updatedAt: new Date().toISOString()
+    })
+    .eq('id', referrer.id);
 
   return { referrerUsername: referrer.username || referrer.firstName || 'Anonymous' };
 }

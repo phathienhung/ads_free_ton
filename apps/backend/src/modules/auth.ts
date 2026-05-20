@@ -111,17 +111,36 @@ export async function authenticateUser(initDataRaw: string, ipAddress?: string, 
       if (referrer && referrer.id !== userId) {
         referredById = referrer.id;
         
-        // Reward referrer: +1 extraSpin and +1 energy
+        // Reward referrer: Fetch from config
+        const refRewards = await supabase.from('GameConfig').select('value').eq('key', 'referral_rewards').single();
+        const rewards = refRewards.data?.value as any || { spinBonus: 1, energyBonus: 1 };
+
+        // Count referrals to check milestones
+        const { count: referralCount } = await supabase
+          .from('User')
+          .select('id', { count: 'exact', head: true })
+          .eq('referredById', referrer.id);
+        
+        const newCount = (referralCount || 0) + 1;
+        
+        // Find if this newCount reaches any milestone
+        const { data: milestoneReached } = await supabase
+          .from('ReferralMilestone')
+          .select('target')
+          .eq('target', newCount)
+          .single();
+
         await supabase
           .from('User')
           .update({
-            extraSpins: (referrer.extraSpins || 0) + 1,
-            energy: Math.min((referrer.energy || 0) + 1, (referrer.maxEnergy || 100)),
+            extraSpins: (referrer.extraSpins || 0) + (rewards.spinBonus || 1),
+            energy: Math.min((referrer.energy || 0) + (rewards.energyBonus || 1), (referrer.maxEnergy || 100)),
+            milestonesAchieved: milestoneReached ? (referrer.milestonesAchieved || 0) + 1 : (referrer.milestonesAchieved || 0),
             updatedAt: new Date().toISOString()
           })
           .eq('id', referrer.id);
         
-        console.log(`Referral credited: ${referrer.id} invited ${userId}`);
+        console.log(`Referral credited: ${referrer.id} invited ${userId}. Total: ${newCount}`);
       }
     }
 
