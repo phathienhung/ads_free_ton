@@ -393,8 +393,12 @@ export async function getReferralStats(userId: string) {
 
   if (recentError) throw recentError;
 
-  // Get current withdrawal limit
+  // Get current withdrawal limit and all milestones
   const withdrawalLimit = await getWithdrawalLimit(userId);
+  const { data: milestones } = await supabase
+    .from('ReferralMilestone')
+    .select('*')
+    .order('target', { ascending: true });
 
   return {
     referralCode: user.referralCode,
@@ -402,6 +406,7 @@ export async function getReferralStats(userId: string) {
     totalReferrals: directReferrals || 0,
     totalEarnings: totalEarnings.toString(),
     withdrawalLimit: withdrawalLimit.toString(),
+    milestones: milestones || [],
     recentReferrals: recentReferrals || [],
   };
 }

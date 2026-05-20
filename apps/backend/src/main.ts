@@ -37,6 +37,7 @@ import {
 } from './modules/gamification';
 import { getAdminStats, getUsers, toggleBanUser, getPendingWithdrawals, getFraudLogs } from './modules/admin';
 import { handleTelegramWebhook } from './modules/webhook';
+import { getGameConfig, EnergyParams, LevelingParams } from './lib/config';
 import { supabase } from './lib/supabase';
 
 const app = express();
@@ -68,6 +69,19 @@ app.get('/api/health', async (_req, res) => {
 
 // Telegram Webhook
 app.post('/api/webhook', handleTelegramWebhook);
+
+// Game Config (Public)
+app.get('/api/config', async (_req, res) => {
+  try {
+    const [energy, leveling] = await Promise.all([
+      getGameConfig<EnergyParams>('energy_params'),
+      getGameConfig<LevelingParams>('leveling_params'),
+    ]);
+    res.json({ energy, leveling });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 app.get('/api/health/supabase', async (_req, res) => {
   try {

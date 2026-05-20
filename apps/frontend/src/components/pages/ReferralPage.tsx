@@ -96,31 +96,38 @@ export default function ReferralPage() {
         </div>
       </div>
 
-      {/* Commission Tiers */}
+      {/* Withdrawal Milestones */}
       <div className="glass-card animate-fade-in" style={{ padding: 20, marginBottom: 20 }}>
-        <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>💰 Commission Tiers</h3>
-        {[
-          { level: 1, rate: '10%', color: 'var(--accent-green)', icon: '🟢' },
-          { level: 2, rate: '5%', color: 'var(--accent-blue)', icon: '🔵' },
-          { level: 3, rate: '2%', color: 'var(--accent-purple)', icon: '🟣' },
-        ].map((tier) => (
-          <div key={tier.level} style={{
-            display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0',
-            borderBottom: tier.level < 3 ? '1px solid var(--border-color)' : 'none',
-          }}>
-            <span style={{ fontSize: 20 }}>{tier.icon}</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 600 }}>Level {tier.level}</div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                {tier.level === 1 ? 'Direct referrals' : tier.level === 2 ? 'Referrals of referrals' : '3rd generation'}
+        <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>📊 Withdrawal Milestones</h3>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>
+          Invite friends to increase your daily withdrawal capacity!
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {stats?.milestones?.map((m: any, i: number) => {
+            const isReached = (stats?.totalReferrals || 0) >= m.target;
+            return (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '10px 14px', borderRadius: 'var(--radius-md)',
+                background: isReached ? 'rgba(34,197,94,0.1)' : 'var(--bg-glass)',
+                border: isReached ? '1px solid var(--accent-green)' : '1px solid var(--border-color)',
+                opacity: isReached ? 1 : 0.7
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 18 }}>{isReached ? '✅' : '🔒'}</span>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>Invite {m.target} Friends</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Limit: {m.withdrawalLimit} TON / day</div>
+                  </div>
+                </div>
+                {isReached && <span className="badge badge-green">UNLOCKED</span>}
               </div>
-            </div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 18, color: tier.color }}>
-              {tier.rate}
-            </div>
-          </div>
-        ))}
+            );
+          })}
+        </div>
       </div>
+
+      {/* Commission Tiers */}
 
       {/* Recent Referrals */}
       <h3 className="section-title">🕐 Recent Referrals</h3>

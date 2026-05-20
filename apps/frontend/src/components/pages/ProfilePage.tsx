@@ -3,7 +3,7 @@
 import { useAppStore } from '@/stores/useAppStore';
 
 export default function ProfilePage() {
-  const { user, setActiveTab, logout } = useAppStore();
+  const { user, gameConfig, setActiveTab, logout } = useAppStore();
 
   const menuItems = [
     { icon: '📢', label: 'My Campaigns', desc: 'Manage your ad campaigns', tab: 'advertiser' },
@@ -13,7 +13,7 @@ export default function ProfilePage() {
   ];
 
   const energyPercent = user ? (user.energy / user.maxEnergy) * 100 : 0;
-  const xpPercent = user ? (user.xp / (user.level * 100)) * 100 : 0;
+  const xpPercent = user && user.xpForNextLevel ? (user.xp / user.xpForNextLevel) * 100 : 0;
 
   return (
     <div className="page">
@@ -81,7 +81,7 @@ export default function ProfilePage() {
             }} />
           </div>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-            Regenerates 1 per 5 minutes
+            Regenerates 1 per {Math.round((gameConfig?.energy?.recoverSeconds || 300) / 60)} minutes
           </div>
         </div>
 
@@ -89,14 +89,14 @@ export default function ProfilePage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
             <span style={{ fontSize: 13, fontWeight: 600 }}>🏆 XP Progress</span>
             <span style={{ fontSize: 13, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-              {user?.xp}/{(user?.level || 1) * 100}
+              {user?.xp}/{user?.xpForNextLevel || (user?.level || 1) * 100}
             </span>
           </div>
           <div className="progress-bar">
             <div className="progress-fill" style={{ width: `${xpPercent}%` }} />
           </div>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-            Level up for +5 max energy
+            Level up for +{gameConfig?.leveling?.energyBonusPerLevel || 5} max energy
           </div>
         </div>
       </div>

@@ -13,6 +13,11 @@ export interface LevelingParams {
   energyBonusPerLevel: number;
 }
 
+export interface WithdrawalFee {
+  rate: number;
+  minFee: number;
+}
+
 const CACHE_TTL = 300; // 5 minutes
 
 export async function getGameConfig<T>(key: string): Promise<T> {

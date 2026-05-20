@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../lib/supabase';
+import { getGameConfig, WithdrawalFee } from '../lib/config';
 
 const BOT_TOKEN = '8942132951:AAGvbVoWMIja8FYWpV-ezCBE9m-spXv4WhM';
 const ADMIN_CHAT_ID = '1597337885';
@@ -91,9 +92,9 @@ export async function deposit(userId: string, amount: number) {
  * Request withdrawal
  */
 export async function requestWithdrawal(userId: string, amount: number, tonAddress: string) {
-  if (amount <= 0) throw new Error('Amount must be positive');
-  
-  const FEE_RATE = 0.05; // 5% withdrawal fee
+  // const FEE_RATE = 0.05; // 5% withdrawal fee
+  const feeConfig = await getGameConfig<WithdrawalFee>('withdrawal_fee').catch(() => ({ rate: 0.05, minFee: 0.1 }));
+  const FEE_RATE = feeConfig.rate;
   const MIN_WITHDRAWAL = 0.1;
 
   if (amount < MIN_WITHDRAWAL) {
@@ -111,7 +112,7 @@ export async function requestWithdrawal(userId: string, amount: number, tonAddre
     throw new Error('Insufficient balance');
   }
 
-  const fee = amount * FEE_RATE;
+  const fee = Math.max(amount * FEE_RATE, feeConfig.minFee);
   const netAmount = amount - fee;
 
   // Freeze withdrawal amount

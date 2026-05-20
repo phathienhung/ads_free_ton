@@ -61,6 +61,11 @@ class ApiClient {
     });
   }
 
+  // Config
+  getConfig() {
+    return this.request<{ energy: any; leveling: any }>('/api/config');
+  }
+
   // User
   getMe() {
     return this.request<any>('/api/user/me');

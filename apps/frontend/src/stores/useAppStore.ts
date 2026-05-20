@@ -29,6 +29,7 @@ interface AppState {
   isAuthenticated: boolean;
   activeTab: string;
   rewardPopup: { show: boolean; amount: string; label: string } | null;
+  gameConfig: { energy: any; leveling: any } | null;
 
   setUser: (user: User) => void;
   setActiveTab: (tab: string) => void;
@@ -37,6 +38,7 @@ interface AppState {
   
   login: (initData?: string) => Promise<void>;
   refreshUser: () => Promise<void>;
+  fetchConfig: () => Promise<void>;
   logout: () => void;
 }
 
@@ -46,6 +48,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   isAuthenticated: false,
   activeTab: 'home',
   rewardPopup: null,
+  gameConfig: null,
 
   setUser: (user) => set({ user, isAuthenticated: true, isLoading: false }),
   setActiveTab: (tab) => set({ activeTab: tab }),
@@ -64,6 +67,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         const result = await api.login(initData);
         api.setToken(result.accessToken);
         set({ user: result.user, isAuthenticated: true, isLoading: false });
+        get().fetchConfig(); // Fetch config after login
       } else {
         set({ isLoading: false });
       }
@@ -71,6 +75,15 @@ export const useAppStore = create<AppState>((set, get) => ({
       console.error('Login error:', err);
       alert(`Login failed: ${err.message || 'Network error (check API_URL)'}`);
       set({ isLoading: false });
+    }
+  },
+
+  fetchConfig: async () => {
+    try {
+      const config = await api.getConfig();
+      set({ gameConfig: config });
+    } catch (err) {
+      console.error('Fetch config error:', err);
     }
   },
 
