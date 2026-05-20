@@ -31,7 +31,7 @@ interface AppState {
   isAuthenticated: boolean;
   activeTab: string;
   rewardPopup: { show: boolean; amount: string; label: string } | null;
-  gameConfig: { energy: any; leveling: any } | null;
+  gameConfig: { energy: any; leveling: any; withdrawFee?: any } | null;
 
   setUser: (user: User) => void;
   setActiveTab: (tab: string) => void;

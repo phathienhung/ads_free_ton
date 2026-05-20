@@ -73,11 +73,12 @@ app.post('/api/webhook', handleTelegramWebhook);
 // Game Config (Public)
 app.get('/api/config', async (_req, res) => {
   try {
-    const [energy, leveling] = await Promise.all([
+    const [energy, leveling, withdrawFee] = await Promise.all([
       getGameConfig<EnergyParams>('energy_params'),
       getGameConfig<LevelingParams>('leveling_params'),
+      getGameConfig<any>('withdraw_fee').catch(() => ({ rate: 5, minFee: 0.1 })),
     ]);
-    res.json({ energy, leveling });
+    res.json({ energy, leveling, withdrawFee });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

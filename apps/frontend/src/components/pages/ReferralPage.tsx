@@ -75,6 +75,10 @@ export default function ReferralPage() {
         </div>
       </div>
 
+      <div style={{ fontSize: 13, color: 'var(--accent-orange)', textAlign: 'center', marginBottom: 20, fontWeight: 600 }}>
+        🎁 Rewards +1 spin and +1 energy for each friend invited!
+      </div>
+
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
         <div className="glass-card stat-card animate-fade-in" style={{ animationDelay: '0.1s' }}>

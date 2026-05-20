@@ -5,7 +5,7 @@ import { api } from '@/lib/api';
 import { useAppStore } from '@/stores/useAppStore';
 
 export default function WalletPage() {
-  const { user, refreshUser } = useAppStore();
+  const { user, refreshUser, gameConfig } = useAppStore();
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDeposit, setShowDeposit] = useState(false);
@@ -188,7 +188,7 @@ export default function WalletPage() {
               value={tonAddress} onChange={(e) => setTonAddress(e.target.value)} />
           </div>
           <div style={{ fontSize: 12, color: 'var(--accent-orange)', marginBottom: 16, padding: '8px 12px', background: 'rgba(245,158,11,0.1)', borderRadius: 8 }}>
-            ⚠️ 5% withdrawal fee. Min withdrawal: 0.1 TON
+            ⚠️ {gameConfig?.withdrawFee?.rate || 5}% withdrawal fee. Min withdrawal: {gameConfig?.withdrawFee?.minFee || 0.1} TON
           </div>
           <button className="btn btn-primary btn-full" disabled={!amount || !tonAddress || processing} onClick={handleWithdraw}>
             {processing ? '⏳ Processing...' : '📤 Withdraw'}

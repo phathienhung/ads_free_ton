@@ -319,5 +319,5 @@ export async function getWithdrawalLimit(userId: string): Promise<number> {
     return 0; 
   }
 
-  return Number(achieved.limit);
+  return Number(achieved.withdrawalLimit);
 }

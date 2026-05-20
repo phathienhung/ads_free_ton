@@ -305,10 +305,10 @@ export async function doSpin(userId: string) {
           updatedAt: new Date().toISOString()
         }).eq('id', userId);
       }
-    } else if (selected.label.includes('XP')) {
+    } else if (selected.label.toLowerCase().includes('xp')) {
       // Reward XP (Use shared addXP helper)
       await addXP(userId, amount);
-    } else if (selected.label.includes('+Spin') || selected.type === 'SPIN') {
+    } else if (selected.label.toLowerCase().includes('spin') || selected.type === 'SPIN') {
       // Reward Extra Spin
       const { data: u } = await supabase.from('User').select('extraSpins').eq('id', userId).single();
       await supabase.from('User').update({ 
