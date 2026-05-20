@@ -125,7 +125,11 @@ export async function authenticateUser(initDataRaw: string, ipAddress?: string, 
       }
     }
 
-    // Create user with explicit NOT NULL fields
+    // Fetch defaults from config
+    const energyConfig = await supabase.from('GameConfig').select('value').eq('key', 'energy_params').single();
+    const eParams = energyConfig.data?.value as any || { maxEnergy: 100, initialEnergy: 100 };
+
+    // Create user with dynamic defaults
     const { data: newUser, error: createError } = await supabase
       .from('User')
       .insert({
@@ -142,8 +146,8 @@ export async function authenticateUser(initDataRaw: string, ipAddress?: string, 
         role: 'USER',
         level: 1,
         xp: 0,
-        energy: 100,
-        maxEnergy: 100,
+        energy: eParams.initialEnergy || 100,
+        maxEnergy: eParams.maxEnergy || 100,
         energyUpdatedAt: new Date().toISOString(),
         lastActiveAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

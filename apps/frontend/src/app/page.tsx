@@ -15,7 +15,7 @@ import AdvertiserPage from '@/components/pages/AdvertiserPage';
 import RewardPopup from '@/components/RewardPopup';
 
 export default function App() {
-  const { user, isLoading, isAuthenticated, activeTab, login, rewardPopup } = useAppStore();
+  const { user, isLoading, isAuthenticated, activeTab, login, fetchConfig, rewardPopup } = useAppStore();
   const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
@@ -24,7 +24,10 @@ export default function App() {
       const token = api.getToken();
       if (token) {
         try {
-          const user = await api.getMe();
+          const [user] = await Promise.all([
+            api.getMe(),
+            fetchConfig()
+          ]);
           useAppStore.getState().setUser(user);
           setInitializing(false);
           return;
@@ -41,11 +44,11 @@ export default function App() {
         if (initData) {
           try {
             await login(initData);
+            // fetchConfig is already called inside login() in useAppStore
             setInitializing(false);
             return;
           } catch (err: any) {
             console.error('Auto-login failed:', err);
-            // Don't alert here to avoid annoying loop, just stop initializing
           }
         }
       }

@@ -93,7 +93,7 @@ export async function deposit(userId: string, amount: number) {
  */
 export async function requestWithdrawal(userId: string, amount: number, tonAddress: string) {
   // const FEE_RATE = 0.05; // 5% withdrawal fee
-  const feeConfig = await getGameConfig<WithdrawalFee>('withdrawal_fee').catch(() => ({ rate: 0.05, minFee: 0.1 }));
+  const feeConfig = await getGameConfig<WithdrawalFee>('withdrawal_fee').catch(() => ({ rate: 0.05, minFee: 0.01 }));
   const FEE_RATE = feeConfig.rate;
   const MIN_WITHDRAWAL = 0.1;
 
@@ -101,10 +101,12 @@ export async function requestWithdrawal(userId: string, amount: number, tonAddre
     throw new Error(`Minimum withdrawal is ${MIN_WITHDRAWAL}`);
   }
 
-  // Check milestone limit
+  // Check daily milestone limit (Cumulative)
   const limit = await getWithdrawalLimit(userId);
-  if (amount > limit) {
-    throw new Error(`Your current daily withdrawal limit is ${limit} TON. Invite more friends to increase your limit!`);
+  const totalToday = await getWithdrawalTotalToday(userId);
+  
+  if (totalToday + amount > limit) {
+    throw new Error(`Your daily withdrawal limit is ${limit} TON. You have already withdrawn ${totalToday} TON today. Invite more friends to increase your limit!`);
   }
 
   const { data: wallet } = await supabase.from('Wallet').select('balance, frozenBalance').eq('userId', userId).single();
@@ -114,6 +116,10 @@ export async function requestWithdrawal(userId: string, amount: number, tonAddre
 
   const fee = Math.max(amount * FEE_RATE, feeConfig.minFee);
   const netAmount = amount - fee;
+
+  if (netAmount <= 0) {
+    throw new Error(`Withdrawal amount too low. After fees (${fee} TON), you would receive 0. Try a larger amount.`);
+  }
 
   // Freeze withdrawal amount
   await supabase
@@ -257,6 +263,26 @@ export async function processWithdrawal(
   });
 
   return { status };
+}
+
+/**
+ * Get total withdrawn by user in the last 24 hours
+ */
+export async function getWithdrawalTotalToday(userId: string): Promise<number> {
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  
+  const { data, error } = await supabase
+    .from('Transaction')
+    .select('amount, fee')
+    .eq('userId', userId)
+    .eq('type', 'WITHDRAWAL')
+    .in('status', ['PENDING', 'COMPLETED'])
+    .gte('createdAt', oneDayAgo);
+
+  if (error || !data) return 0;
+
+  // We sum (amount + fee) to get the total raw value deducted from balance
+  return data.reduce((sum, tx) => sum + Number(tx.amount) + Number(tx.fee), 0);
 }
 
 /**
