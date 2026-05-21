@@ -230,6 +230,15 @@ export async function getSpinStatus(userId: string) {
 /**
  * Lucky spin
  */
+export async function addXP(userId: string, xpAmount: number) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  // implementation...
+}
+
 export async function doSpin(userId: string) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);

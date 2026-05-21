@@ -55,7 +55,7 @@ export async function startTask(userId: string, campaignId: string, ipAddress?: 
 
   // Add Redis lock to prevent concurrent task starts (race condition energy deduction)
   const lockKey = `lock:start_task:${userId}`;
-  const lock = await redis.set(lockKey, 'locked', 'NX', 'EX', 2);
+  const lock = await redis.set(lockKey, 'locked', 'EX', 2, 'NX');
   if (!lock) {
     throw new Error('Please wait a moment before starting another task.');
   }
