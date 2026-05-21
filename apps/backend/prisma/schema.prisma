@@ -487,7 +487,6 @@ model Event {
 model ShopPackage {
   id           String   @id @default(uuid())
   name         String
-  description  String?
   type         String   // "ENERGY", "XP", "SPIN", "BUNDLE"
   energyAmount Int      @default(0)
   xpAmount     Int      @default(0)

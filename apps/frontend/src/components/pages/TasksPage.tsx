@@ -39,6 +39,21 @@ export default function TasksPage() {
     try {
       setLoading(true);
       const data = await api.getCampaigns(1);
+      
+      const newVerified = new Set<string>();
+      const newCompleted = new Set<string>();
+      
+      data.campaigns.forEach((c: any) => {
+        if (c.userStatus === 'STARTED' || c.userStatus === 'VERIFIED') {
+          newVerified.add(c.id);
+        }
+        if (c.userStatus === 'REWARDED') {
+          newCompleted.add(c.id);
+        }
+      });
+      
+      setVerifiedTasks(prev => new Set([...prev, ...newVerified]));
+      setCompletedTasks(prev => new Set([...prev, ...newCompleted]));
       setCampaigns(data.campaigns);
     } catch (err) {
       console.error(err);

@@ -3,7 +3,6 @@
 CREATE TABLE "ShopPackage" (
   "id" TEXT NOT NULL,
   "name" TEXT NOT NULL,
-  "description" TEXT,
   "type" TEXT NOT NULL, -- "ENERGY", "XP", "SPIN", "BUNDLE"
   "energyAmount" INTEGER NOT NULL DEFAULT 0,
   "xpAmount" INTEGER NOT NULL DEFAULT 0,
@@ -38,8 +37,8 @@ CREATE INDEX "ShopPurchase_packageId_idx" ON "ShopPurchase"("packageId");
 
 -- ==================== SEED DATA ====================
 -- Insert default shop packages
-INSERT INTO "ShopPackage" ("id", "name", "description", "type", "energyAmount", "xpAmount", "spinAmount", "priceTon", "isOneTime") VALUES
-(gen_random_uuid()::text, 'Energy Refill', 'Instantly receive 500 Energy to continue your tasks.', 'ENERGY', 500, 0, 0, 0.5, false),
-(gen_random_uuid()::text, 'XP Boost', 'Gain 1000 XP to level up faster.', 'XP', 0, 1000, 0, 0.8, false),
-(gen_random_uuid()::text, 'Lucky Spins', 'Get 10 extra spins for the lucky wheel.', 'SPIN', 0, 0, 10, 1.0, false),
-(gen_random_uuid()::text, 'Starter Bundle', 'The ultimate starter pack! Includes 500 Energy, 1000 XP, and 10 lucky spins.', 'BUNDLE', 500, 1000, 10, 1.5, true);
+INSERT INTO "ShopPackage" ("id", "name", "type", "energyAmount", "xpAmount", "spinAmount", "priceTon", "isOneTime") VALUES
+(gen_random_uuid()::text, '500 Energy', 'ENERGY', 500, 0, 0, 0.5, false),
+(gen_random_uuid()::text, '1000 XP Boost', 'XP', 0, 1000, 0, 0.8, false),
+(gen_random_uuid()::text, '10 Lucky Spins', 'SPIN', 0, 0, 10, 1.0, false),
+(gen_random_uuid()::text, 'Starter Bundle (500 Energy + 1000 XP + 10 Spins)', 'BUNDLE', 500, 1000, 10, 1.5, true);

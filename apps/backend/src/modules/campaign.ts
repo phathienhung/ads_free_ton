@@ -90,13 +90,15 @@ export async function createCampaign(data: {
  * Get campaigns for task browsing (active and matching user)
  */
 export async function getAvailableCampaigns(userId: string, page = 1, limit = 20) {
-  // Get user's completed tasks to exclude
-  const { data: completedTasks } = await supabase
+  // Get user's task history to know which ones are started/completed
+  const { data: userTasks } = await supabase
     .from('TaskCompletion')
-    .select('campaignId')
+    .select('campaignId, status')
     .eq('userId', userId);
 
-  const excludeIds = (completedTasks || []).map(t => t.campaignId);
+  const excludeIds = (userTasks || [])
+    .filter(t => t.status === 'REWARDED')
+    .map(t => t.campaignId);
 
   let query = supabase
     .from('Campaign')
@@ -117,7 +119,10 @@ export async function getAvailableCampaigns(userId: string, page = 1, limit = 20
   const total = count || 0;
 
   return {
-    campaigns: campaigns.map(serializeCampaign),
+    campaigns: campaigns.map((c: any) => ({
+      ...serializeCampaign(c),
+      userStatus: userTasks?.find(t => t.campaignId === c.id)?.status || null,
+    })),
     total,
     page,
     totalPages: Math.ceil(total / limit),

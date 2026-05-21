@@ -108,64 +108,54 @@ export default function ShopPage() {
           <p>No packages available at the moment.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4">
-          {packages.map((pkg, i) => {
-            const isBundle = pkg.type === 'BUNDLE';
-            return (
-              <div 
-                key={pkg.id} 
-                className={`glass-card relative flex flex-col items-center text-center overflow-hidden transition-all duration-300 hover:-translate-y-1 ${
-                  isBundle 
-                    ? 'col-span-2 border border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.2)] bg-gradient-to-br from-white/5 to-purple-500/10' 
-                    : 'p-5'
-                }`}
-                style={{ animationDelay: `${i * 0.1}s`, padding: isBundle ? '24px 20px' : '20px 16px' }}
-              >
-                {pkg.isOneTime && (
-                  <div className="absolute top-0 inset-x-0 bg-gradient-to-r from-purple-600 to-pink-600 text-[10px] font-bold py-1 text-center shadow-lg uppercase tracking-wider">
-                    One Time Offer
-                  </div>
-                )}
-                
-                <div className={`w-20 h-20 rounded-full bg-black/20 flex items-center justify-center shrink-0 shadow-inner mb-3 ${isBundle ? 'mt-4 w-24 h-24' : 'mt-2'}`}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {packages.map((pkg, i) => (
+            <div 
+              key={pkg.id} 
+              className={`glass-card p-5 relative overflow-hidden transition-all duration-300 hover:-translate-y-1 ${pkg.isOneTime ? 'border border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.2)]' : ''}`}
+              style={{ animationDelay: `${i * 0.1}s` }}
+            >
+              {pkg.isOneTime && (
+                <div className="absolute top-0 right-0 bg-gradient-to-l from-purple-600 to-pink-600 text-xs font-bold px-3 py-1 rounded-bl-lg z-10 shadow-lg">
+                  ONE TIME OFFER
+                </div>
+              )}
+              
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center shrink-0 shadow-inner border border-white/10">
                   {getIcon(pkg.type)}
                 </div>
                 
-                <h3 className={`font-bold mb-1 ${isBundle ? 'text-2xl text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400' : 'text-lg'}`}>
-                  {pkg.name}
-                </h3>
-                
-                {pkg.description && (
-                  <p className="text-sm text-gray-400 mb-3 px-2">
-                    {pkg.description}
-                  </p>
-                )}
-                
-                <div className={`flex flex-wrap justify-center gap-2 mb-4 mt-auto w-full ${isBundle ? 'max-w-md' : ''}`}>
-                  {pkg.energyAmount > 0 && <span className="badge badge-yellow text-[10px] py-1 px-2">+{pkg.energyAmount} Energy</span>}
-                  {pkg.xpAmount > 0 && <span className="badge badge-blue text-[10px] py-1 px-2">+{pkg.xpAmount} XP</span>}
-                  {pkg.spinAmount > 0 && <span className="badge badge-pink text-[10px] py-1 px-2">+{pkg.spinAmount} Spins</span>}
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-[15px] leading-tight mb-1.5 truncate text-white">{pkg.name}</h3>
+                  <div className="flex flex-wrap gap-1.5">
+                    {pkg.energyAmount > 0 && <span className="badge badge-yellow text-[10px] px-1.5 py-0.5">+{pkg.energyAmount} ⚡</span>}
+                    {pkg.xpAmount > 0 && <span className="badge badge-blue text-[10px] px-1.5 py-0.5">+{pkg.xpAmount} ⭐</span>}
+                    {pkg.spinAmount > 0 && <span className="badge badge-pink text-[10px] px-1.5 py-0.5">+{pkg.spinAmount} 🎰</span>}
+                  </div>
                 </div>
                 
                 <button 
-                  className={`btn w-full py-2.5 flex items-center justify-center gap-2 font-bold transition-all ${
-                    isBundle 
-                      ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-[0_0_15px_rgba(217,70,239,0.5)] hover:shadow-[0_0_25px_rgba(217,70,239,0.8)]'
-                      : 'btn-primary shadow-[0_0_10px_rgba(59,130,246,0.3)] hover:shadow-[0_0_15px_rgba(59,130,246,0.6)]'
-                  }`}
+                  className="btn btn-primary shrink-0 py-1.5 px-3 flex flex-col items-center justify-center gap-0.5 font-bold shadow-[0_0_10px_rgba(59,130,246,0.3)] transition-all hover:shadow-[0_0_15px_rgba(59,130,246,0.6)]"
+                  style={{ minWidth: '85px', borderRadius: '12px' }}
                   onClick={() => handleBuy(pkg)}
                   disabled={purchaseLoading === pkg.id || !address}
                 >
-                  {purchaseLoading === pkg.id ? 'Processing...' : (
+                  {purchaseLoading === pkg.id ? (
+                    <span className="text-xs">Wait...</span>
+                  ) : (
                     <>
-                      <img src="/ton-logo.png" alt="TON" className="w-5 h-5 brightness-0 invert opacity-90" onError={(e) => e.currentTarget.style.display = 'none'} />
-                      {parseFloat(pkg.priceTon)} TON
+                      <span className="text-[10px] font-normal text-blue-100 uppercase tracking-wider">Buy</span>
+                      <div className="flex items-center gap-1 text-[13px]">
+                        <img src="/ton-logo.png" alt="TON" className="w-3.5 h-3.5 brightness-0 invert" onError={(e) => e.currentTarget.style.display = 'none'} />
+                        <span>{parseFloat(pkg.priceTon)}</span>
+                      </div>
                     </>
                   )}
                 </button>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       )}
     </div>
