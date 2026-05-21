@@ -452,6 +452,27 @@ app.get('/api/admin/fraud-logs', authMiddleware, adminMiddleware, async (req: ex
   }
 });
 
+// ==================== SHOP ====================
+app.get('/api/shop/packages', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const { getShopPackages } = await import('./modules/shop');
+    const packages = await getShopPackages(req.userId!);
+    res.json(packages);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/shop/purchase', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const { purchasePackage } = await import('./modules/shop');
+    const result = await purchasePackage(req.userId!, req.body.packageId, req.body.boc);
+    res.json(result);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // ==================== WEBSOCKET ====================
 io.on('connection', (socket: any) => {
   const userId = socket.handshake.query.userId as string;

@@ -10,6 +10,7 @@ import WalletPage from '@/components/pages/WalletPage';
 import LeaderboardPage from '@/components/pages/LeaderboardPage';
 import ProfilePage from '@/components/pages/ProfilePage';
 import SpinPage from '@/components/pages/SpinPage';
+import ShopPage from '@/components/pages/ShopPage';
 import ReferralPage from '@/components/pages/ReferralPage';
 import AdvertiserPage from '@/components/pages/AdvertiserPage';
 import RewardPopup from '@/components/RewardPopup';
@@ -123,6 +124,7 @@ export default function App() {
       case 'home': return <HomePage />;
       case 'tasks': return <TasksPage />;
       case 'wallet': return <WalletPage />;
+      case 'shop': return <ShopPage />;
       case 'leaderboard': return <LeaderboardPage />;
       case 'profile': return <ProfilePage />;
       case 'spin': return <SpinPage />;

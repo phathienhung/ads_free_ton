@@ -6,6 +6,7 @@ const tabs = [
   { id: 'home', label: 'Home', icon: '🏠' },
   { id: 'tasks', label: 'Tasks', icon: '📋' },
   { id: 'spin', label: 'Spin', icon: '🎰' },
+  { id: 'shop', label: 'Shop', icon: '🛒' },
   { id: 'wallet', label: 'Wallet', icon: '💰' },
   { id: 'profile', label: 'Profile', icon: '👤' },
 ];

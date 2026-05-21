@@ -56,6 +56,7 @@ model User {
   notifications   Notification[]
   transactions    Transaction[]
   fraudLogs       FraudLog[]
+  shopPurchases   ShopPurchase[]
   
   @@index([telegramId])
   @@index([referralCode])
@@ -479,4 +480,38 @@ model Event {
   createdAt   DateTime  @default(now())
   
   @@index([startDate, endDate])
+}
+
+// ==================== SHOP ====================
+
+model ShopPackage {
+  id           String   @id @default(uuid())
+  name         String
+  type         String   // "ENERGY", "XP", "SPIN", "BUNDLE"
+  energyAmount Int      @default(0)
+  xpAmount     Int      @default(0)
+  spinAmount   Int      @default(0)
+  priceTon     Decimal  @db.Decimal(20, 8)
+  isOneTime    Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  purchases    ShopPurchase[]
+}
+
+model ShopPurchase {
+  id          String       @id @default(uuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id])
+  packageId   String
+  package     ShopPackage  @relation(fields: [packageId], references: [id])
+  
+  priceTon    Decimal      @db.Decimal(20, 8)
+  status      TransactionStatus @default(PENDING) // Re-use TransactionStatus
+  boc         String?
+  
+  createdAt   DateTime     @default(now())
+
+  @@index([userId])
+  @@index([packageId])
 }

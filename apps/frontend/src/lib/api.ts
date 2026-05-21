@@ -159,6 +159,18 @@ class ApiClient {
     });
   }
 
+  // Shop
+  getShopPackages() {
+    return this.request<any[]>('/api/shop/packages');
+  }
+
+  purchasePackage(packageId: string, boc: string) {
+    return this.request<any>('/api/shop/purchase', {
+      method: 'POST',
+      body: JSON.stringify({ packageId, boc }),
+    });
+  }
+
   // Admin
   getAdminStats() {
     return this.request<any>('/api/admin/stats');

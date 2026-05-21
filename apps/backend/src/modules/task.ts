@@ -53,6 +53,13 @@ export async function startTask(userId: string, campaignId: string, ipAddress?: 
   await redis.incr(`rate:tasks:${userId}`);
   await redis.expire(`rate:tasks:${userId}`, 3600);
 
+  // Add Redis lock to prevent concurrent task starts (race condition energy deduction)
+  const lockKey = `lock:start_task:${userId}`;
+  const lock = await redis.set(lockKey, 'locked', 'NX', 'EX', 2);
+  if (!lock) {
+    throw new Error('Please wait a moment before starting another task.');
+  }
+
   // Deduct energy
   const currentEnergy = Number(user.energy);
   await supabase

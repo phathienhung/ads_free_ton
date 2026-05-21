@@ -62,6 +62,17 @@ export default function TasksPage() {
   async function handleComplete(campaignId: string) {
     try {
       setActionLoading(campaignId);
+
+      // Trigger Adsgram ad display before completing the task
+      if (typeof window !== 'undefined' && (window as any).Adsgram) {
+        try {
+          const AdController = (window as any).Adsgram.init({ blockId: "30736" });
+          await AdController.show();
+        } catch (adErr) {
+          console.warn('Adsgram show failed or skipped', adErr);
+        }
+      }
+
       const result = await api.completeTask(campaignId);
       setCompletedTasks((s) => new Set(s).add(campaignId));
       showReward(result.reward, `Task: ${result.campaignTitle}`);
