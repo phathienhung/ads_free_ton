@@ -113,10 +113,10 @@ class ApiClient {
     return this.request<any>('/api/wallet');
   }
 
-  deposit(amount: number) {
+  deposit(amount: number, boc?: string) {
     return this.request<any>('/api/wallet/deposit', {
       method: 'POST',
-      body: JSON.stringify({ amount }),
+      body: JSON.stringify({ amount, boc }),
     });
   }
 

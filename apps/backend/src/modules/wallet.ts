@@ -49,10 +49,15 @@ export async function getWallet(userId: string) {
 }
 
 /**
- * Deposit funds (simulated — in production use TON Connect)
+ * Deposit funds via TON Connect transaction
  */
-export async function deposit(userId: string, amount: number) {
+export async function deposit(userId: string, amount: number, boc?: string) {
   if (amount <= 0) throw new Error('Amount must be positive');
+
+  // Log the BOC for on-chain verification (production: verify tx on TON blockchain)
+  if (boc) {
+    console.log(`[DEPOSIT] User ${userId} sent TON Connect tx, BOC length: ${boc.length}`);
+  }
 
   // Fetch current
   const { data: wallet } = await supabase.from('Wallet').select('balance').eq('userId', userId).single();
@@ -73,7 +78,8 @@ export async function deposit(userId: string, amount: number) {
     type: 'DEPOSIT',
     amount,
     status: 'COMPLETED',
-    description: 'TON deposit',
+    description: boc ? 'TON Connect deposit' : 'TON deposit',
+    metadata: boc ? { boc: boc.substring(0, 100) } : undefined,
     updatedAt: new Date().toISOString()
   }).select('*, user:User(username, firstName)').single();
 
@@ -81,7 +87,8 @@ export async function deposit(userId: string, amount: number) {
 
   // Notify Bot
   const userLabel = (tx as any).user?.username ? `@${(tx as any).user.username}` : (tx as any).user?.firstName || 'User';
-  const msg = `💳 <b>NEW DEPOSIT</b>\nUser: ${userLabel}\nAmount: <b>${amount} TON</b>\nID: <code>${txId}</code>`;
+  const method = boc ? '🔗 TON Connect' : '💳 Manual';
+  const msg = `💳 <b>NEW DEPOSIT</b>\nUser: ${userLabel}\nAmount: <b>${amount} TON</b>\nMethod: ${method}\nID: <code>${txId}</code>`;
   await notifyTelegram(ADMIN_CHAT_ID, msg);
   await notifyTelegram(CHANNEL_CHAT_ID, msg);
 

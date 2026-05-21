@@ -280,7 +280,7 @@ app.get('/api/wallet', authMiddleware, async (req: AuthRequest, res) => {
 
 app.post('/api/wallet/deposit', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const result = await deposit(req.userId!, req.body.amount);
+    const result = await deposit(req.userId!, req.body.amount, req.body.boc);
     res.json(result);
   } catch (err: any) {
     res.status(400).json({ error: err.message });

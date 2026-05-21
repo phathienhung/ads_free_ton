@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import TonConnectProvider from "@/components/TonConnectProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,7 +14,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
       </head>
-      <body>{children}</body>
+      <body>
+        <TonConnectProvider>{children}</TonConnectProvider>
+      </body>
     </html>
   );
 }

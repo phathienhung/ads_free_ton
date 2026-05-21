@@ -1,8 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTonConnectUI, useTonWallet, useTonAddress } from '@tonconnect/ui-react';
 import { api } from '@/lib/api';
 import { useAppStore } from '@/stores/useAppStore';
+
+// Platform wallet address to receive deposits
+const PLATFORM_WALLET = process.env.NEXT_PUBLIC_PLATFORM_WALLET || 'UQBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
 
 export default function WalletPage() {
   const { user, refreshUser, gameConfig } = useAppStore();
@@ -14,9 +18,21 @@ export default function WalletPage() {
   const [tonAddress, setTonAddress] = useState('');
   const [processing, setProcessing] = useState(false);
 
+  // TON Connect hooks
+  const [tonConnectUI] = useTonConnectUI();
+  const wallet = useTonWallet();
+  const userFriendlyAddress = useTonAddress();
+
   useEffect(() => {
     loadTransactions();
   }, []);
+
+  // Auto-fill withdrawal address when wallet is connected
+  useEffect(() => {
+    if (userFriendlyAddress && !tonAddress) {
+      setTonAddress(userFriendlyAddress);
+    }
+  }, [userFriendlyAddress]);
 
   async function loadTransactions() {
     try {
@@ -26,27 +42,74 @@ export default function WalletPage() {
     setLoading(false);
   }
 
+  function handleConnectWallet() {
+    tonConnectUI.openModal();
+  }
+
+  function handleDisconnectWallet() {
+    tonConnectUI.disconnect();
+  }
+
   async function handleDeposit() {
+    if (!wallet) {
+      alert('Please connect your TON wallet first!');
+      tonConnectUI.openModal();
+      return;
+    }
+
+    const depositAmount = parseFloat(amount);
+    if (!depositAmount || depositAmount <= 0) {
+      alert('Please enter a valid amount');
+      return;
+    }
+
     try {
       setProcessing(true);
-      await api.deposit(parseFloat(amount));
+
+      // Send real TON transaction via TON Connect
+      const amountInNanoton = BigInt(Math.floor(depositAmount * 1e9)).toString();
+
+      const transaction = {
+        validUntil: Math.floor(Date.now() / 1000) + 600, // 10 minutes
+        messages: [
+          {
+            address: PLATFORM_WALLET,
+            amount: amountInNanoton,
+          },
+        ],
+      };
+
+      const result = await tonConnectUI.sendTransaction(transaction);
+
+      // Notify backend about the deposit with the BOC (Bag of Cells)
+      await api.deposit(depositAmount, result.boc);
       await refreshUser();
       await loadTransactions();
       setShowDeposit(false);
       setAmount('');
-    } catch (err: any) { alert(err.message); }
+    } catch (err: any) {
+      if (err?.message?.includes('User rejects')) {
+        // User cancelled the transaction
+      } else {
+        alert(err.message || 'Deposit failed');
+      }
+    }
     setProcessing(false);
   }
 
   async function handleWithdraw() {
+    const withdrawAddress = tonAddress || userFriendlyAddress;
+    if (!withdrawAddress) {
+      alert('Please connect your wallet or enter a TON address');
+      return;
+    }
     try {
       setProcessing(true);
-      await api.withdraw(parseFloat(amount), tonAddress);
+      await api.withdraw(parseFloat(amount), withdrawAddress);
       await refreshUser();
       await loadTransactions();
       setShowWithdraw(false);
       setAmount('');
-      setTonAddress('');
     } catch (err: any) { alert(err.message); }
     setProcessing(false);
   }
@@ -68,6 +131,58 @@ export default function WalletPage() {
     <div className="page">
       <h1 className="page-title" style={{ marginBottom: 20 }}>💰 Wallet</h1>
 
+      {/* Wallet Connection Card */}
+      <div className="glass-card animate-fade-in" style={{
+        padding: 16, marginBottom: 16,
+        background: wallet
+          ? 'linear-gradient(135deg, rgba(34,197,94,0.12), rgba(6,182,212,0.12))'
+          : 'linear-gradient(135deg, rgba(139,92,246,0.12), rgba(59,130,246,0.12))',
+        border: wallet ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(139,92,246,0.3)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: '50%',
+              background: wallet ? 'rgba(34,197,94,0.2)' : 'rgba(139,92,246,0.2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
+            }}>
+              {wallet ? '✅' : '🔗'}
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700 }}>
+                {wallet ? 'Wallet Connected' : 'Connect TON Wallet'}
+              </div>
+              {wallet ? (
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                  {userFriendlyAddress.slice(0, 6)}...{userFriendlyAddress.slice(-6)}
+                </div>
+              ) : (
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  Connect to deposit & withdraw TON
+                </div>
+              )}
+            </div>
+          </div>
+          {wallet ? (
+            <button
+              className="btn btn-ghost"
+              style={{ fontSize: 12, padding: '6px 12px' }}
+              onClick={handleDisconnectWallet}
+            >
+              Disconnect
+            </button>
+          ) : (
+            <button
+              className="btn btn-primary"
+              style={{ fontSize: 12, padding: '8px 16px' }}
+              onClick={handleConnectWallet}
+            >
+              🔗 Connect
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Balance Card */}
       <div className="glass-card" style={{
         padding: 28, textAlign: 'center', marginBottom: 20,
@@ -87,6 +202,9 @@ export default function WalletPage() {
         {user?.wallet?.frozenBalance && parseFloat(user.wallet.frozenBalance) > 0 && (
           <div style={{ fontSize: 12, color: 'var(--accent-orange)', marginTop: 8 }}>
             🔒 Frozen: {parseFloat(user.wallet.frozenBalance).toFixed(4)} TON
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
+              (Pending withdrawal — will be released when processed)
+            </div>
           </div>
         )}
 
@@ -163,14 +281,43 @@ export default function WalletPage() {
       {/* Deposit Modal */}
       {showDeposit && (
         <Modal onClose={() => setShowDeposit(false)} title="💳 Deposit TON">
-          <div style={{ marginBottom: 16 }}>
-            <label className="input-label">Amount (TON)</label>
-            <input className="input-field" type="number" step="0.01" placeholder="0.1"
-              value={amount} onChange={(e) => setAmount(e.target.value)} />
-          </div>
-          <button className="btn btn-success btn-full" disabled={!amount || processing} onClick={handleDeposit}>
-            {processing ? '⏳ Processing...' : '💳 Deposit'}
-          </button>
+          {!wallet ? (
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>🔗</div>
+              <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 20 }}>
+                Connect your TON wallet to deposit
+              </div>
+              <button className="btn btn-primary btn-full" onClick={handleConnectWallet}>
+                🔗 Connect Wallet
+              </button>
+            </div>
+          ) : (
+            <>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+                background: 'rgba(34,197,94,0.08)', borderRadius: 'var(--radius-md)', marginBottom: 16,
+              }}>
+                <span>✅</span>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600 }}>Connected Wallet</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                    {userFriendlyAddress.slice(0, 10)}...{userFriendlyAddress.slice(-8)}
+                  </div>
+                </div>
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <label className="input-label">Amount (TON)</label>
+                <input className="input-field" type="number" step="0.01" placeholder="0.1"
+                  value={amount} onChange={(e) => setAmount(e.target.value)} />
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16, padding: '8px 12px', background: 'var(--bg-glass)', borderRadius: 8 }}>
+                💡 You will be asked to confirm the transaction in your wallet app.
+              </div>
+              <button className="btn btn-success btn-full" disabled={!amount || processing} onClick={handleDeposit}>
+                {processing ? '⏳ Confirming in wallet...' : '💳 Deposit via TON Connect'}
+              </button>
+            </>
+          )}
         </Modal>
       )}
 
@@ -186,6 +333,14 @@ export default function WalletPage() {
             <label className="input-label">TON Wallet Address</label>
             <input className="input-field" placeholder="EQ..."
               value={tonAddress} onChange={(e) => setTonAddress(e.target.value)} />
+            {wallet && !tonAddress && (
+              <button
+                style={{ fontSize: 11, color: 'var(--accent-blue)', background: 'none', border: 'none', cursor: 'pointer', marginTop: 4, padding: 0 }}
+                onClick={() => setTonAddress(userFriendlyAddress)}
+              >
+                📋 Use connected wallet address
+              </button>
+            )}
           </div>
           <div style={{ fontSize: 12, color: 'var(--accent-orange)', marginBottom: 16, padding: '8px 12px', background: 'rgba(245,158,11,0.1)', borderRadius: 8 }}>
             ⚠️ {gameConfig?.withdrawFee?.rate || 5}% withdrawal fee. Min withdrawal: {gameConfig?.withdrawFee?.minFee || 0.1} TON
