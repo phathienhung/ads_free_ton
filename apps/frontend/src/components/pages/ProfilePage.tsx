@@ -7,6 +7,7 @@ export default function ProfilePage() {
   const { user, gameConfig, setActiveTab, logout } = useAppStore();
 
   const { energy, maxEnergy, energyPercent, countdown } = useLiveEnergy();
+  const recoverSeconds = gameConfig?.energy?.recoverSeconds || 300;
 
   const menuItems = [
     { icon: '📢', label: 'My Campaigns', desc: 'Manage your ad campaigns', tab: 'advertiser' },
