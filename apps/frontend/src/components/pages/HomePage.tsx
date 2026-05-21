@@ -3,6 +3,7 @@
 import { useAppStore } from '@/stores/useAppStore';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
+import { useLiveEnergy } from '@/hooks/useLiveEnergy';
 
 const campaignIcons: Record<string, string> = {
   CHANNEL: '📢',
@@ -18,26 +19,7 @@ export default function HomePage() {
   const [stats, setStats] = useState({ totalTasks: 0, totalEarned: '0' });
   const [loading, setLoading] = useState(true);
 
-  const recoverSeconds = useAppStore(state => state.gameConfig?.energy?.recoverSeconds || 300);
-  const [countdown, setCountdown] = useState('');
-
-  useEffect(() => {
-    if (!user || user.energy >= user.maxEnergy) {
-      setCountdown('');
-      return;
-    }
-    const tick = () => {
-      const elapsed = (Date.now() - new Date(user.energyUpdatedAt || Date.now()).getTime()) / 1000;
-      const sinceLastRegen = elapsed % recoverSeconds;
-      const remaining = Math.max(0, recoverSeconds - sinceLastRegen);
-      const mins = Math.floor(remaining / 60);
-      const secs = Math.floor(remaining % 60);
-      setCountdown(`${mins}:${secs.toString().padStart(2, '0')}`);
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [user, recoverSeconds]);
+  const { energy, maxEnergy, energyPercent, countdown } = useLiveEnergy();
 
   useEffect(() => {
     async function load() {
@@ -59,7 +41,7 @@ export default function HomePage() {
     load();
   }, [user]);
 
-  const energyPercent = user ? (user.energy / user.maxEnergy) * 100 : 0;
+
 
   return (
     <div className="page">
@@ -72,7 +54,7 @@ export default function HomePage() {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
           <div className="energy-bar">
             <span className="energy-icon">⚡</span>
-            <span>{user?.energy || 0}/{user?.maxEnergy || 100}</span>
+            <span>{energy}/{maxEnergy}</span>
           </div>
           {countdown && (
             <div style={{ fontSize: 11, color: 'var(--accent-blue)', fontFamily: 'var(--font-mono)', fontWeight: 700, marginTop: 4 }}>
@@ -141,7 +123,7 @@ export default function HomePage() {
         )}
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
           <span style={{ fontSize: 13, fontWeight: 600 }}>⚡ Energy</span>
-          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{user?.energy}/{user?.maxEnergy}</span>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{energy}/{maxEnergy}</span>
         </div>
         <div className="progress-bar">
           <div className="progress-fill" style={{

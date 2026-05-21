@@ -1,32 +1,12 @@
 'use client';
 
 import { useAppStore } from '@/stores/useAppStore';
-import { useState, useEffect } from 'react';
+import { useLiveEnergy } from '@/hooks/useLiveEnergy';
 
 export default function ProfilePage() {
   const { user, gameConfig, setActiveTab, logout } = useAppStore();
 
-  // Energy countdown timer
-  const recoverSeconds = gameConfig?.energy?.recoverSeconds || 300;
-  const [countdown, setCountdown] = useState('');
-
-  useEffect(() => {
-    if (!user || user.energy >= user.maxEnergy) {
-      setCountdown('');
-      return;
-    }
-    const tick = () => {
-      const elapsed = (Date.now() - new Date(user.energyUpdatedAt || Date.now()).getTime()) / 1000;
-      const sinceLastRegen = elapsed % recoverSeconds;
-      const remaining = Math.max(0, recoverSeconds - sinceLastRegen);
-      const mins = Math.floor(remaining / 60);
-      const secs = Math.floor(remaining % 60);
-      setCountdown(`${mins}:${secs.toString().padStart(2, '0')}`);
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [user, recoverSeconds]);
+  const { energy, maxEnergy, energyPercent, countdown } = useLiveEnergy();
 
   const menuItems = [
     { icon: '📢', label: 'My Campaigns', desc: 'Manage your ad campaigns', tab: 'advertiser' },
@@ -35,7 +15,7 @@ export default function ProfilePage() {
     { icon: '🏆', label: 'Leaderboard', desc: 'See top earners', tab: 'leaderboard' },
   ];
 
-  const energyPercent = user ? (user.energy / user.maxEnergy) * 100 : 0;
+
   const xpPercent = user && user.xpForNextLevel ? (user.xp / user.xpForNextLevel) * 100 : 0;
 
   return (
@@ -105,7 +85,7 @@ export default function ProfilePage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
             <span style={{ fontSize: 13, fontWeight: 600 }}>⚡ Energy</span>
             <span style={{ fontSize: 13, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-              {user?.energy}/{user?.maxEnergy}
+              {energy}/{maxEnergy}
             </span>
           </div>
           <div className="progress-bar">
