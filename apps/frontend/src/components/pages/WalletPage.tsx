@@ -199,14 +199,6 @@ export default function WalletPage() {
         </div>
         <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 4 }}>TON</div>
 
-        {user?.wallet?.frozenBalance && parseFloat(user.wallet.frozenBalance) > 0 && (
-          <div style={{ fontSize: 12, color: 'var(--accent-orange)', marginTop: 8 }}>
-            🔒 Frozen: {parseFloat(user.wallet.frozenBalance).toFixed(4)} TON
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
-              (Pending withdrawal — will be released when processed)
-            </div>
-          </div>
-        )}
 
         <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
           <button className="btn btn-success" style={{ flex: 1 }} onClick={() => setShowDeposit(true)}>
