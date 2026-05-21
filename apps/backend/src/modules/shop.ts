@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../lib/supabase';
-import { addXP } from './gamification';
+import { addXP } from './task';
 
 export async function getShopPackages(userId: string) {
   // Fetch active packages
