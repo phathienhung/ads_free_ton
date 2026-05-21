@@ -190,9 +190,20 @@ export default function TasksPage() {
             const isVerified = verifiedTasks.has(c.id) || completedTasks.has(c.id);
             const isCompleted = completedTasks.has(c.id);
             const isProcessing = actionLoading === c.id;
+            const isOtherProcessing = actionLoading !== null && actionLoading !== c.id && !actionLoading.startsWith('daily-');
 
             return (
-              <div key={c.id} className="glass-card animate-fade-in" style={{ padding: 16, animationDelay: `${i * 0.05}s` }}>
+              <div
+                key={c.id}
+                className="glass-card animate-fade-in"
+                style={{
+                  padding: 16,
+                  animationDelay: `${i * 0.05}s`,
+                  opacity: isOtherProcessing ? 0.4 : 1,
+                  pointerEvents: isOtherProcessing ? 'none' : 'auto',
+                  transition: 'opacity 0.3s ease',
+                }}
+              >
                 <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
                   <div className="campaign-icon" style={{ width: 56, height: 56, fontSize: 28 }}>
                     {typeIcons[c.type] || '📢'}
@@ -233,7 +244,7 @@ export default function TasksPage() {
                 ) : isVerified ? (
                   <button
                     className="btn btn-success btn-full"
-                    disabled={isProcessing}
+                    disabled={isProcessing || isOtherProcessing}
                     onClick={() => handleComplete(c.id)}
                   >
                     {isProcessing ? '⏳ Claiming...' : '🎁 Claim Reward'}
@@ -244,9 +255,14 @@ export default function TasksPage() {
                       href={c.targetUrl}
                       target="_blank"
                       rel="noopener"
-                      className="btn btn-ghost"
-                      style={{ flex: 1, textDecoration: 'none' }}
-                      onClick={async () => {
+                      className={`btn btn-ghost${isOtherProcessing ? ' disabled' : ''}`}
+                      style={{
+                        flex: 1,
+                        textDecoration: 'none',
+                        pointerEvents: isOtherProcessing ? 'none' : 'auto',
+                      }}
+                      onClick={async (e) => {
+                        if (actionLoading) { e.preventDefault(); return; }
                         // Optimistically start the task in background
                         await api.startTask(c.id).catch(() => {});
                       }}
@@ -257,7 +273,7 @@ export default function TasksPage() {
                     <button
                       className="btn btn-primary"
                       style={{ flex: 1 }}
-                      disabled={isProcessing}
+                      disabled={isProcessing || isOtherProcessing}
                       onClick={() => handleVerify(c.id)}
                     >
                       {isProcessing ? '⏳ Checking...' : '✅ I Did It'}
