@@ -25,8 +25,14 @@ export async function getShopPackages(userId: string) {
   return packages?.filter(pkg => !(pkg.isOneTime && boughtPackages.has(pkg.id))) || [];
 }
 
+import { verifyTonTransaction } from '../lib/ton';
+
 export async function purchasePackage(userId: string, packageId: string, boc: string) {
   if (!boc) throw new Error('Transaction BOC is required');
+
+  const lockKey = `lock:purchase:${userId}`;
+  const lock = await redis.set(lockKey, 'locked', 'EX', 5, 'NX');
+  if (!lock) throw new Error('Purchase is already processing');
 
   // Verify package exists
   const { data: pkg, error: pkgError } = await supabase
@@ -37,6 +43,10 @@ export async function purchasePackage(userId: string, packageId: string, boc: st
     .single();
 
   if (pkgError || !pkg) throw new Error('Package not found or inactive');
+
+  // Verify TON transaction
+  const isValid = await verifyTonTransaction(boc, pkg.priceTon);
+  if (!isValid) throw new Error('Invalid TON transaction. Please check your transaction.');
 
   // Check one-time rule
   if (pkg.isOneTime) {

@@ -85,6 +85,7 @@ export default function TasksPage() {
           await AdController.show();
         } catch (adErr) {
           console.warn('Adsgram show failed or skipped', adErr);
+          throw new Error('You must watch the ad to claim the reward. Please disable your AdBlocker and try again.');
         }
       }
 

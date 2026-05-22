@@ -4,28 +4,21 @@ import { supabase } from '../lib/supabase';
 /**
  * Create a new campaign
  */
-export async function createCampaign(data: {
-  advertiserId: string;
-  title: string;
-  description: string;
-  bannerUrl?: string;
-  type: 'CHANNEL' | 'GROUP' | 'BOT' | 'WEBSITE' | 'MINI_APP';
-  targetUrl: string;
-  pricingModel?: 'CPC' | 'CPM' | 'CPE';
-  pricePerAction: number;
-  totalBudget: number;
-  targetCount?: number;
-  targetCountries?: string[];
-  targetLanguages?: string[];
-  minUserLevel?: number;
-  startDate?: Date;
-  endDate?: Date;
-}) {
-  // Check advertiser wallet balance
+export async function createCampaign(userId: string, data: any) {
+  // Input validation
+  const price = Number(data.pricePerAction);
+  const total = Number(data.totalBudget);
+  if (isNaN(price) || price <= 0) throw new Error('Invalid pricePerAction');
+  if (isNaN(total) || total <= 0) throw new Error('Invalid totalBudget');
+  if (price > total) throw new Error('Price per action cannot exceed total budget');
+  if (!data.title || data.title.length > 100) throw new Error('Invalid title');
+  if (!data.targetUrl || !data.targetUrl.startsWith('http')) throw new Error('Invalid target URL');
+
+  // Verify advertiser balance
   const { data: wallet, error: walletError } = await supabase
     .from('Wallet')
     .select('balance, frozenBalance')
-    .eq('userId', data.advertiserId)
+    .eq('userId', userId)
     .single();
 
   if (walletError || !wallet || Number(wallet.balance) < data.totalBudget) {
@@ -40,7 +33,7 @@ export async function createCampaign(data: {
       frozenBalance: Number(wallet.frozenBalance) + data.totalBudget,
       updatedAt: new Date().toISOString()
     })
-    .eq('userId', data.advertiserId);
+    .eq('userId', userId);
 
   // Create campaign
   const campaignId = uuidv4();

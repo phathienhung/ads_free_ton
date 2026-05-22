@@ -129,6 +129,10 @@ export async function getDailyTasks(userId: string) {
  * Claim daily task reward
  */
 export async function claimDailyTask(userId: string, dailyTaskId: string) {
+  const lockKey = `lock:claim_daily:${userId}:${dailyTaskId}`;
+  const lock = await redis.set(lockKey, 'locked', 'EX', 5, 'NX');
+  if (!lock) throw new Error('Task is already being claimed');
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -231,6 +235,10 @@ export async function getSpinStatus(userId: string) {
  * Lucky spin
  */
 export async function doSpin(userId: string) {
+  const lockKey = `lock:spin:${userId}`;
+  const lock = await redis.set(lockKey, 'locked', 'EX', 5, 'NX');
+  if (!lock) throw new Error('Spin is already processing');
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);

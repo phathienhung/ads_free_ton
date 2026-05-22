@@ -1,11 +1,18 @@
 import { Request, Response } from 'express';
 import { supabase } from '../lib/supabase';
 
-const BOT_TOKEN = process.env.BOT_TOKEN || '8942132951:AAGvbVoWMIja8FYWpV-ezCBE9m-spXv4WhM';
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID || '1597337885';
 const CHANNEL_CHAT_ID = process.env.CHANNEL_CHAT_ID || '@ads_free_withdrawals';
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 
 export async function handleTelegramWebhook(req: Request, res: Response) {
+  const secretToken = req.headers['x-telegram-bot-api-secret-token'];
+  if (WEBHOOK_SECRET && secretToken !== WEBHOOK_SECRET) {
+    console.warn('Unauthorized webhook request');
+    return res.status(401).send('Unauthorized');
+  }
+
   const update = req.body;
   console.log('Telegram Update received:', JSON.stringify(update));
 

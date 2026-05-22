@@ -1,8 +1,6 @@
 import Redis from 'ioredis';
 
-// Stub out Redis for local development to prevent connection errors
-// when Redis is not available
-export const redis = {
+const stubRedis = {
   get: async () => null,
   set: async () => 'OK',
   setex: async () => 'OK',
@@ -11,6 +9,15 @@ export const redis = {
   expire: async () => 1,
   on: (event: string, cb: any) => {},
 } as unknown as Redis;
+
+export const redis = process.env.REDIS_URL
+  ? new Redis(process.env.REDIS_URL)
+  : stubRedis;
+
+if (process.env.REDIS_URL) {
+  redis.on('error', (err) => console.error('Redis Client Error', err));
+  redis.on('connect', () => console.log('Redis Client Connected'));
+}
 
 // Cache helpers
 export async function getCache<T>(key: string): Promise<T | null> {

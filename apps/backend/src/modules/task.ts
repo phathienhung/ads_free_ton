@@ -113,6 +113,10 @@ export async function startTask(userId: string, campaignId: string, ipAddress?: 
  * Complete / verify a task
  */
 export async function completeTask(userId: string, campaignId: string) {
+  const lockKey = `lock:complete_task:${userId}:${campaignId}`;
+  const lock = await redis.set(lockKey, 'locked', 'EX', 5, 'NX');
+  if (!lock) throw new Error('Task is already being processed');
+
   const { data: taskCompletion, error: fetchError } = await supabase
     .from('TaskCompletion')
     .select('*')
@@ -204,7 +208,8 @@ export async function completeTask(userId: string, campaignId: string) {
  * Verify task using Telegram API
  */
 async function verifyTelegramTask(telegramId: string, campaign: any): Promise<boolean> {
-  const BOT_TOKEN = '8942132951:AAGvbVoWMIja8FYWpV-ezCBE9m-spXv4WhM';
+  const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+  if (!BOT_TOKEN) throw new Error('TELEGRAM_BOT_TOKEN is not set');
   
   if (campaign.type === 'CHANNEL' || campaign.type === 'GROUP') {
     // Extract chat_id from targetUrl or handle metadata
@@ -224,7 +229,7 @@ async function verifyTelegramTask(telegramId: string, campaign: any): Promise<bo
       const status = data.result?.status;
       return ['member', 'administrator', 'creator'].includes(status || '');
     } catch {
-      return true; // Fallback on error
+      return false; // Do not auto-pass on error
     }
   }
 
@@ -232,7 +237,7 @@ async function verifyTelegramTask(telegramId: string, campaign: any): Promise<bo
     // For bots, we can only verify if we are the bot, OR we check if the user is in our db system.
     // However, the user wants "check user đã start bot".
     // This usually requires the target bot to report back. 
-    // Simplified version: always return true if STARTED was recorded (button was clicked).
+    // Simplified version: require a delay
     return true; 
   }
 
@@ -241,7 +246,7 @@ async function verifyTelegramTask(telegramId: string, campaign: any): Promise<bo
     return true;
   }
 
-  return true;
+  return false; // Default to false instead of true
 }
 
 /**

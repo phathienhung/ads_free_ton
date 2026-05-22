@@ -3,9 +3,11 @@ import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../lib/supabase';
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-const JWT_SECRET = process.env.JWT_SECRET || 'change-me';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'change-me-refresh';
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+if (!BOT_TOKEN) throw new Error('TELEGRAM_BOT_TOKEN is not set');
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
+if (!JWT_SECRET || !JWT_REFRESH_SECRET) throw new Error('JWT secrets are not set');
 
 export interface TelegramInitData {
   query_id?: string;

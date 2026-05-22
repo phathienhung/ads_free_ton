@@ -23,6 +23,19 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
     req.userId = decoded.userId;
     req.telegramId = decoded.telegramId;
     req.userRole = decoded.role;
+    req.user = decoded;
+
+    // Check if user is banned
+    const { data: user, error } = await supabase.from('User').select('isBanned').eq('id', decoded.userId).single();
+    if (error || !user) {
+      res.status(401).json({ error: 'User not found' });
+      return;
+    }
+    if (user.isBanned) {
+      res.status(403).json({ error: 'Your account has been banned' });
+      return;
+    }
+
     next();
   } catch (error) {
     res.status(401).json({ error: 'Invalid or expired token' });

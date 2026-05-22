@@ -156,9 +156,10 @@ app.post('/api/auth/dev-login', async (req: express.Request, res: express.Respon
       user = { ...newUser, wallet: newWallet };
     }
 
+    if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET not set');
     const accessToken = jwt.sign(
       { userId: user.id, telegramId: user.telegramId.toString(), role: user.role },
-      process.env.JWT_SECRET || 'change-me',
+      process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
 
@@ -474,11 +475,25 @@ app.post('/api/shop/purchase', authMiddleware, async (req: AuthRequest, res) => 
 });
 
 // ==================== WEBSOCKET ====================
+io.use((socket: any, next) => {
+  const token = socket.handshake.auth?.token || socket.handshake.query?.token;
+  if (!token) {
+    return next(new Error('Authentication error'));
+  }
+  try {
+    const { verifyToken } = require('./modules/auth');
+    const decoded = verifyToken(token);
+    socket.userId = decoded.userId;
+    next();
+  } catch (err) {
+    next(new Error('Authentication error'));
+  }
+});
+
 io.on('connection', (socket: any) => {
-  const userId = socket.handshake.query.userId as string;
-  if (userId) {
-    socket.join(userId);
-    console.log(`User ${userId} connected to WebSocket`);
+  if (socket.userId) {
+    socket.join(socket.userId);
+    console.log(`User ${socket.userId} connected to WebSocket`);
   }
 
   socket.on('disconnect', () => {
