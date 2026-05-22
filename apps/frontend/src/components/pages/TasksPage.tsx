@@ -299,7 +299,7 @@ export default function TasksPage() {
                       if (actionLoading) return;
                       
                       if (user && user.energy < 1) {
-                        alert('Không đủ năng lượng! Vui lòng chờ năng lượng hồi phục.');
+                        alert('Not enough energy! Please wait for energy to regenerate.');
                         return;
                       }
 
