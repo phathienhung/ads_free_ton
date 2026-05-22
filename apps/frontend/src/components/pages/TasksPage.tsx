@@ -257,13 +257,37 @@ export default function TasksPage() {
                     {isProcessing ? '⏳ Claiming...' : '🎁 Claim Reward'}
                   </button>
                 ) : isStarted ? (
-                  <button
-                    className="btn btn-primary btn-full"
-                    disabled={isProcessing || isOtherProcessing}
-                    onClick={() => handleVerify(c.id)}
-                  >
-                    {isProcessing ? '⏳ Checking...' : '✅ I Did It'}
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      className="btn btn-ghost"
+                      style={{ padding: '12px', flexShrink: 0 }}
+                      disabled={isOtherProcessing}
+                      title="Open link again"
+                      onClick={() => {
+                        const url = c.targetUrl;
+                        if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
+                          const tg = (window as any).Telegram.WebApp;
+                          if (url.includes('t.me') || url.includes('tg://')) {
+                            tg.openTelegramLink(url);
+                          } else {
+                            tg.openLink(url);
+                          }
+                        } else {
+                          window.open(url, '_blank');
+                        }
+                      }}
+                    >
+                      🔗
+                    </button>
+                    <button
+                      className="btn btn-primary"
+                      style={{ flex: 1 }}
+                      disabled={isProcessing || isOtherProcessing}
+                      onClick={() => handleVerify(c.id)}
+                    >
+                      {isProcessing ? '⏳ Checking...' : '✅ I Did It'}
+                    </button>
+                  </div>
                 ) : (
                   <button
                     className={`btn btn-primary btn-full${isOtherProcessing ? ' disabled' : ''}`}
