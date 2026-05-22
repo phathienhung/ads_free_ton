@@ -275,8 +275,14 @@ export default function TasksPage() {
                       if (actionLoading) return;
                       
                       // 0. Optimistically deduct energy in UI so it updates instantly
+                      // We must also update energyUpdatedAt, otherwise useLiveEnergy will 
+                      // immediately regenerate the energy based on the old timestamp!
                       if (user) {
-                        setUser({ ...user, energy: Math.max(0, user.energy - 1) });
+                        setUser({ 
+                          ...user, 
+                          energy: Math.max(0, user.energy - 1),
+                          energyUpdatedAt: new Date().toISOString()
+                        });
                       }
 
                       // 1. Fire startTask FIRST using keepalive fetch (survives page close)

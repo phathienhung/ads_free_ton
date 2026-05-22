@@ -220,11 +220,15 @@ async function verifyTelegramTask(telegramId: string, campaign: any): Promise<bo
     // Example: https://t.me/channel_name -> @channel_name
     let chatId = campaign.metadata?.chatId;
     if (!chatId && campaign.targetUrl) {
-      const match = campaign.targetUrl.match(/t\.me\/([a-zA-Z0-9_]+)/);
-      if (match) chatId = `@${match[1]}`;
+      if (!campaign.targetUrl.includes('joinchat') && !campaign.targetUrl.includes('+')) {
+        const match = campaign.targetUrl.match(/t\.me\/([a-zA-Z0-9_]+)/);
+        if (match && match[1] !== 'joinchat') {
+          chatId = `@${match[1]}`;
+        }
+      }
     }
 
-    if (!chatId) return true; // Fallback to auto-verify if ID can't be parsed
+    if (!chatId) return true; // Fallback to auto-verify if it's an invite link and ID is unknown
 
     try {
       const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getChatMember?chat_id=${chatId}&user_id=${telegramId}`);
@@ -236,7 +240,7 @@ async function verifyTelegramTask(telegramId: string, campaign: any): Promise<bo
         return false;
       }
       const status = data.result?.status;
-      return ['member', 'administrator', 'creator'].includes(status || '');
+      return ['member', 'administrator', 'creator', 'restricted'].includes(status || '');
     } catch (e: any) {
       if (e.message && e.message.includes('Lỗi hệ thống')) throw e;
       return false; // Do not auto-pass on other network errors
