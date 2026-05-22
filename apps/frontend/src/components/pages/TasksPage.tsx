@@ -274,23 +274,20 @@ export default function TasksPage() {
                       textDecoration: 'none',
                       pointerEvents: isOtherProcessing ? 'none' : 'auto',
                     }}
-                    onClick={async (e) => {
-                      e.preventDefault();
-                      if (actionLoading) return;
-                      
-                      try {
-                        // Register start and deduct energy on backend
-                        await api.startTask(c.id);
-                        
-                        // Update UI states
-                        setStartedTasks(s => new Set(s).add(c.id));
-                        await refreshUser();
-                        
-                        // Navigate to Telegram
-                        window.open(c.targetUrl, '_blank');
-                      } catch (err: any) {
-                        alert(err.message || 'Failed to start task');
+                    onClick={(e) => {
+                      if (actionLoading) {
+                        e.preventDefault();
+                        return;
                       }
+                      
+                      // We don't preventDefault here, so the browser natively opens the URL.
+                      // This avoids popup blockers and Telegram Webview issues.
+                      api.startTask(c.id).then(() => {
+                        setStartedTasks(s => new Set(s).add(c.id));
+                        refreshUser();
+                      }).catch((err: any) => {
+                        console.error('Failed to start task:', err.message);
+                      });
                     }}
                   >
                     {c.type === 'CHANNEL' || c.type === 'GROUP' ? '📢 Join' :
