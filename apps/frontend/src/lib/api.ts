@@ -96,6 +96,36 @@ class ApiClient {
     return this.request<any>(`/api/tasks/${campaignId}/start`, { method: 'POST' });
   }
 
+  /**
+   * Fire-and-forget startTask that survives page navigation/unload.
+   * Uses fetch with keepalive:true (survives page close) with sendBeacon fallback.
+   */
+  startTaskBeacon(campaignId: string): void {
+    const token = this.getToken();
+    // Pass token in URL query because sendBeacon cannot set custom headers
+    const url = `${API_URL}/api/tasks/${campaignId}/start${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    // Try fetch with keepalive first (modern browsers, survives navigation)
+    try {
+      fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({}),
+        keepalive: true,
+      }).catch(() => {});
+    } catch {
+      // Fallback: sendBeacon (very reliable for fire-and-forget but limited)
+      try {
+        const blob = new Blob([JSON.stringify({})], { type: 'application/json' });
+        navigator.sendBeacon(url, blob);
+      } catch {
+        // Last resort - just ignore, the user can retry
+      }
+    }
+  }
+
   verifyTask(campaignId: string) {
     return this.request<any>(`/api/tasks/${campaignId}/verify`, { method: 'POST' });
   }

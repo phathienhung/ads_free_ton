@@ -265,18 +265,22 @@ export default function TasksPage() {
                     {isProcessing ? '⏳ Checking...' : '✅ I Did It'}
                   </button>
                 ) : (
-                  <a
-                    href={c.targetUrl}
+                  <button
                     className={`btn btn-primary btn-full${isOtherProcessing ? ' disabled' : ''}`}
                     style={{
-                      textDecoration: 'none',
                       pointerEvents: isOtherProcessing ? 'none' : 'auto',
                     }}
-                    onClick={(e) => {
-                      e.preventDefault();
+                    disabled={isOtherProcessing}
+                    onClick={() => {
                       if (actionLoading) return;
                       
-                      // 1. Navigate FIRST using Telegram Native API
+                      // 1. Fire startTask FIRST using keepalive fetch (survives page close)
+                      api.startTaskBeacon(c.id);
+                      
+                      // 2. Mark as started locally
+                      setStartedTasks(s => new Set(s).add(c.id));
+                      
+                      // 3. Navigate using Telegram Native API
                       const url = c.targetUrl;
                       if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
                         const tg = (window as any).Telegram.WebApp;
@@ -288,19 +292,11 @@ export default function TasksPage() {
                       } else {
                         window.open(url, '_blank');
                       }
-                      
-                      // 2. Call startTask in background AFTER navigation
-                      api.startTask(c.id).then(() => {
-                        setStartedTasks(s => new Set(s).add(c.id));
-                        refreshUser();
-                      }).catch((err: any) => {
-                        console.error('Failed to start task:', err.message);
-                      });
                     }}
                   >
                     {c.type === 'CHANNEL' || c.type === 'GROUP' ? '📢 Join' :
                      c.type === 'BOT' ? '🤖 Start Bot' : '🌐 Visit'}
-                  </a>
+                  </button>
                 )}
               </div>
             );

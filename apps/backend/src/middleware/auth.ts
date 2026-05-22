@@ -12,14 +12,21 @@ export interface AuthRequest extends Request {
  * Middleware to verify JWT token from Authorization header
  */
 export async function authMiddleware(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  let token: string | undefined;
+
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.slice(7);
+  } else if (req.query.token && typeof req.query.token === 'string') {
+    token = req.query.token;
+  }
+
+  if (!token) {
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
 
   try {
-    const token = authHeader.slice(7);
     const decoded = verifyToken(token);
     req.userId = decoded.userId;
     req.telegramId = decoded.telegramId;
