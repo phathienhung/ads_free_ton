@@ -29,7 +29,11 @@ export function useLiveEnergy() {
       const regenIntervalMs = recoverSeconds * 1000;
       
       const regenCount = Math.floor(elapsedMs / regenIntervalMs);
-      const newEnergy = Math.min(user.energy + (regenCount * recoverAmount), maxEnergy);
+      
+      let newEnergy = user.energy;
+      if (user.energy < maxEnergy) {
+        newEnergy = Math.min(user.energy + (regenCount * recoverAmount), maxEnergy);
+      }
       
       setEnergy(newEnergy);
 

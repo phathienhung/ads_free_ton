@@ -297,15 +297,23 @@ export async function doSpin(userId: string) {
   if (amount > 0) {
     if (selected.label.includes('Energy')) {
       // Reward Energy
-      const config = await getGameConfig<EnergyParams>('energy_params');
-      const { data: u } = await supabase.from('User').select('energy, maxEnergy').eq('id', userId).single();
+      const { getUserWithEnergy } = await import('./task');
+      const u = await getUserWithEnergy(userId);
       if (u) {
-        const maxEnergy = u.maxEnergy || config.maxEnergy;
-        const newEnergy = Math.min((u.energy || 0) + amount, maxEnergy);
-        await supabase.from('User').update({ 
+        const newEnergy = (u.energy || 0) + amount;
+        
+        const updateData: any = { 
           energy: newEnergy,
           updatedAt: new Date().toISOString()
-        }).eq('id', userId);
+        };
+        
+        // If energy exceeds or equals max, reset the regeneration timer
+        const config = await getGameConfig<EnergyParams>('energy_params');
+        if (newEnergy >= (u.maxEnergy || config.maxEnergy)) {
+          updateData.energyUpdatedAt = new Date().toISOString();
+        }
+
+        await supabase.from('User').update(updateData).eq('id', userId);
       }
     } else if (selected.label.toLowerCase().includes('xp')) {
       // Reward XP (Use shared addXP helper)

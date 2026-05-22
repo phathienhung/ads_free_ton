@@ -59,8 +59,8 @@ export default function LeaderboardPage() {
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--accent-green)' }}>
               {formatScore(data[1].score)}
             </div>
-            <div style={{ background: 'linear-gradient(135deg, #c0c0c0, #808080)', height: 60, borderRadius: '8px 8px 0 0', marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>
-              🥈
+            <div style={{ background: 'linear-gradient(135deg, #c0c0c0, #808080)', height: 60, borderRadius: '8px 8px 0 0', marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: 28, fontWeight: 'bold', color: 'white', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>2</span>
             </div>
           </div>
 
@@ -74,8 +74,8 @@ export default function LeaderboardPage() {
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 15, color: 'var(--accent-green)', fontWeight: 700 }}>
               {formatScore(data[0].score)}
             </div>
-            <div style={{ background: 'linear-gradient(135deg, #ffd700, #ff8c00)', height: 80, borderRadius: '8px 8px 0 0', marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>
-              🥇
+            <div style={{ background: 'linear-gradient(135deg, #ffd700, #ff8c00)', height: 80, borderRadius: '8px 8px 0 0', marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: 36, fontWeight: 'bold', color: 'white', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>1</span>
             </div>
           </div>
 
@@ -88,8 +88,8 @@ export default function LeaderboardPage() {
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--accent-green)' }}>
               {formatScore(data[2].score)}
             </div>
-            <div style={{ background: 'linear-gradient(135deg, #cd7f32, #8b4513)', height: 40, borderRadius: '8px 8px 0 0', marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>
-              🥉
+            <div style={{ background: 'linear-gradient(135deg, #cd7f32, #8b4513)', height: 40, borderRadius: '8px 8px 0 0', marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: 24, fontWeight: 'bold', color: 'white', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>3</span>
             </div>
           </div>
         </div>

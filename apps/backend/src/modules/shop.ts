@@ -120,14 +120,25 @@ export async function purchasePackage(userId: string, packageId: string, boc?: s
   if (purchaseError) throw purchaseError;
 
   // Grant rewards
-  const { data: user } = await supabase.from('User').select('energy, extraSpins').eq('id', userId).single();
+  const { getUserWithEnergy } = await import('./task');
+  const user = await getUserWithEnergy(userId);
   
   if (pkg.energyAmount > 0 || pkg.spinAmount > 0) {
-    await supabase.from('User').update({
-      energy: (user?.energy || 0) + pkg.energyAmount,
+    const newEnergy = (user?.energy || 0) + pkg.energyAmount;
+    const updateData: any = {
+      energy: newEnergy,
       extraSpins: (user?.extraSpins || 0) + pkg.spinAmount,
       updatedAt: new Date().toISOString()
-    }).eq('id', userId);
+    };
+    
+    // If energy exceeds or equals max, reset the regeneration timer
+    const { getGameConfig } = await import('../lib/config');
+    const config = await getGameConfig<any>('energy_params');
+    if (newEnergy >= (user?.maxEnergy || config.maxEnergy)) {
+      updateData.energyUpdatedAt = new Date().toISOString();
+    }
+
+    await supabase.from('User').update(updateData).eq('id', userId);
   }
 
   if (pkg.xpAmount > 0) {
