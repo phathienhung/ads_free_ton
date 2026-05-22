@@ -11,7 +11,7 @@ const typeIcons: Record<string, string> = {
 const typeFilters = ['ALL', 'CHANNEL', 'GROUP', 'BOT', 'WEBSITE'];
 
 export default function TasksPage() {
-  const { user, setUser, showReward, refreshUser } = useAppStore();
+  const { user, setUser, showReward, refreshUser, gameConfig } = useAppStore();
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [filter, setFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
@@ -304,13 +304,15 @@ export default function TasksPage() {
                       }
 
                       // 0. Optimistically deduct energy in UI so it updates instantly
-                      // We must also update energyUpdatedAt, otherwise useLiveEnergy will 
-                      // immediately regenerate the energy based on the old timestamp!
+                      // We must also update energyUpdatedAt ONLY IF the user was at max energy.
+                      // If they are not at max energy, they are already regenerating, and updating
+                      // the timestamp would reset their countdown!
                       if (user) {
+                        const maxEnergy = gameConfig?.energy?.maxEnergy || 100;
                         setUser({ 
                           ...user, 
                           energy: Math.max(0, user.energy - 1),
-                          energyUpdatedAt: new Date().toISOString()
+                          energyUpdatedAt: user.energy >= maxEnergy ? new Date().toISOString() : user.energyUpdatedAt
                         });
                       }
 
