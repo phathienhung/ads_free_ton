@@ -314,7 +314,7 @@ app.get('/api/wallet/transactions', authMiddleware, async (req: AuthRequest, res
 // ==================== GAMIFICATION ====================
 app.get('/api/leaderboard/:type', async (req: express.Request, res: express.Response) => {
   try {
-    const type = req.params.type as 'earner' | 'advertiser' | 'referral';
+    const type = req.params.type as 'earner' | 'advertiser' | 'spin';
     const period = (req.query.period as string) || 'all';
     const result = await getLeaderboard(type, period as any);
     res.json(result);

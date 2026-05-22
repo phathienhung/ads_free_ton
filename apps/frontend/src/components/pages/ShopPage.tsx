@@ -29,31 +29,47 @@ export default function ShopPage() {
   }
 
   async function handleBuy(pkg: any) {
-    if (!address) {
-      alert('Please connect your TON wallet first!');
+    if (!user) {
+      alert('Please login first!');
       return;
     }
 
     try {
       setPurchaseLoading(pkg.id);
       
-      const platformWallet = process.env.NEXT_PUBLIC_PLATFORM_WALLET || '0QAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE9X';
-      const amountNano = (parseFloat(pkg.priceTon) * 1e9).toString();
+      const price = parseFloat(pkg.priceTon);
+      const balance = parseFloat(user.wallet?.balance || "0");
+      const remainingPrice = Math.max(0, price - balance);
+      
+      let boc = '';
 
-      const tx = {
-        validUntil: Math.floor(Date.now() / 1000) + 360,
-        messages: [
-          {
-            address: platformWallet,
-            amount: amountNano,
-          }
-        ]
-      };
+      if (remainingPrice > 0) {
+        if (!address) {
+          alert('You do not have enough internal balance. Please connect your TON wallet to pay the remaining amount!');
+          document.getElementById('tc-connect-btn')?.click();
+          setPurchaseLoading(null);
+          return;
+        }
 
-      const txResult = await tonConnectUI.sendTransaction(tx);
+        const platformWallet = process.env.NEXT_PUBLIC_PLATFORM_WALLET || '0QAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE9X';
+        const amountNano = (remainingPrice * 1e9).toString();
+
+        const tx = {
+          validUntil: Math.floor(Date.now() / 1000) + 360,
+          messages: [
+            {
+              address: platformWallet,
+              amount: amountNano,
+            }
+          ]
+        };
+
+        const txResult = await tonConnectUI.sendTransaction(tx);
+        boc = txResult.boc;
+      }
       
       // Send boc to backend to complete purchase
-      await api.purchasePackage(pkg.id, txResult.boc);
+      await api.purchasePackage(pkg.id, boc);
       
       alert(`Successfully purchased ${pkg.name}!`);
       await refreshUser();
@@ -61,7 +77,7 @@ export default function ShopPage() {
       
     } catch (err: any) {
       console.error('Purchase failed', err);
-      alert('Purchase failed or was cancelled.');
+      alert(err.message || 'Purchase failed or was cancelled.');
     } finally {
       setPurchaseLoading(null);
     }

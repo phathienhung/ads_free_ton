@@ -9,7 +9,7 @@ import { getWithdrawalLimit } from './wallet';
  * Get leaderboard (earners, advertisers, or referrals)
  */
 export async function getLeaderboard(
-  type: 'earner' | 'advertiser' | 'referral',
+  type: 'earner' | 'advertiser' | 'spin',
   period: 'daily' | 'weekly' | 'monthly' | 'all',
   limit = 50
 ) {
@@ -24,13 +24,11 @@ export async function getLeaderboard(
     const { data: wallets, error } = await supabase
       .from('Wallet')
       .select('*, user:User!userId(username, firstName, id, photoUrl, level, telegramId)')
+      .gt('totalEarned', 0)
       .order('totalEarned', { ascending: false })
       .limit(limit);
 
-    if (error) {
-      console.error('Leaderboard fetch error:', error);
-      throw error;
-    }
+    if (error) throw error;
 
     result = (wallets || []).map((w: any, i: number) => ({
       rank: i + 1,
@@ -45,13 +43,11 @@ export async function getLeaderboard(
     const { data: wallets, error } = await supabase
       .from('Wallet')
       .select('*, user:User!userId(username, firstName, id, photoUrl, level, telegramId)')
+      .gt('totalSpent', 0)
       .order('totalSpent', { ascending: false })
       .limit(limit);
 
-    if (error) {
-      console.error('Leaderboard fetch error:', error);
-      throw error;
-    }
+    if (error) throw error;
 
     result = (wallets || []).map((w: any, i: number) => ({
       rank: i + 1,
@@ -61,26 +57,24 @@ export async function getLeaderboard(
       telegramId: w.user?.telegramId?.toString(),
       score: w.totalSpent?.toString(),
     }));
-  } else if (type === 'referral') {
-    // Top referrers by referral count
-    // Note: Complex aggregation is better with rpc/view in Supabase, 
-    // but for now we'll do a simple select if the schema supports it.
-    // In our schema, we don't have a count column, so we'd need a view or a complex query.
-    // Simplifying for now: return empty or fix later with SQL view.
+  } else if (type === 'spin') {
+    // Top users by extraSpins
     const { data: users, error } = await supabase
       .from('User')
-      .select('username, firstName, photoUrl, level, telegramId')
+      .select('username, firstName, photoUrl, level, telegramId, extraSpins')
+      .gt('extraSpins', 0)
+      .order('extraSpins', { ascending: false })
       .limit(limit);
     
-    // We'll skip the counts for referral type for now to keep it stable, 
-    // OR the user can create a view.
+    if (error) throw error;
+
     result = (users || []).map((u, i) => ({
       rank: i + 1,
       username: u.username || u.firstName || 'Anonymous',
       photoUrl: u.photoUrl,
       level: u.level,
       telegramId: u.telegramId?.toString(),
-      score: "0",
+      score: u.extraSpins?.toString() || "0",
     }));
   }
 

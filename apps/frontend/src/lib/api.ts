@@ -194,7 +194,7 @@ class ApiClient {
     return this.request<any[]>('/api/shop/packages');
   }
 
-  purchasePackage(packageId: string, boc: string) {
+  purchasePackage(packageId: string, boc?: string) {
     return this.request<any>('/api/shop/purchase', {
       method: 'POST',
       body: JSON.stringify({ packageId, boc }),

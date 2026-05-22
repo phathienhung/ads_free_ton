@@ -28,9 +28,7 @@ export async function getShopPackages(userId: string) {
 
 import { verifyTonTransaction } from '../lib/ton';
 
-export async function purchasePackage(userId: string, packageId: string, boc: string) {
-  if (!boc) throw new Error('Transaction BOC is required');
-
+export async function purchasePackage(userId: string, packageId: string, boc?: string) {
   const lockKey = `lock:purchase:${userId}`;
   const lock = await redis.set(lockKey, 'locked', 'EX', 5, 'NX');
   if (!lock) throw new Error('Purchase is already processing');
@@ -45,9 +43,27 @@ export async function purchasePackage(userId: string, packageId: string, boc: st
 
   if (pkgError || !pkg) throw new Error('Package not found or inactive');
 
-  // Verify TON transaction
-  const isValid = await verifyTonTransaction(boc, pkg.priceTon);
-  if (!isValid) throw new Error('Invalid TON transaction. Please check your transaction.');
+  // Check user wallet
+  const { data: wallet, error: walletError } = await supabase
+    .from('Wallet')
+    .select('*')
+    .eq('userId', userId)
+    .single();
+    
+  if (walletError || !wallet) throw new Error('Wallet not found');
+
+  const price = Number(pkg.priceTon);
+  const balance = Number(wallet.balance || 0);
+  
+  const walletDeduction = Math.min(price, balance);
+  const remainingPrice = price - walletDeduction;
+
+  if (remainingPrice > 0) {
+    if (!boc) throw new Error(`Transaction BOC is required for remaining price: ${remainingPrice} TON`);
+    // Verify TON transaction
+    const isValid = await verifyTonTransaction(boc, remainingPrice);
+    if (!isValid) throw new Error('Invalid TON transaction. Please check your transaction.');
+  }
 
   // Check one-time rule
   if (pkg.isOneTime) {
@@ -63,6 +79,28 @@ export async function purchasePackage(userId: string, packageId: string, boc: st
     }
   }
 
+  // Deduct from wallet if applicable
+  if (walletDeduction > 0) {
+    const { error: deductError } = await supabase
+      .from('Wallet')
+      .update({ balance: balance - walletDeduction })
+      .eq('id', wallet.id);
+      
+    if (deductError) throw new Error('Failed to deduct from wallet balance');
+    
+    // Log deduction transaction
+    await supabase.from('Transaction').insert({
+      id: uuidv4(),
+      userId,
+      type: 'SHOP_SPEND',
+      amount: -walletDeduction,
+      status: 'COMPLETED',
+      description: `Spent wallet balance for ${pkg.name}`,
+      metadata: { packageId },
+      updatedAt: new Date().toISOString()
+    });
+  }
+
   // Create purchase record
   const purchaseId = uuidv4();
   const { data: purchase, error: purchaseError } = await supabase
@@ -72,8 +110,8 @@ export async function purchasePackage(userId: string, packageId: string, boc: st
       userId,
       packageId,
       priceTon: pkg.priceTon,
-      status: 'COMPLETED', // We assume immediate completion for now, real app should verify BOC on-chain
-      boc,
+      status: 'COMPLETED',
+      boc: boc || 'WALLET_BALANCE',
       createdAt: new Date().toISOString()
     })
     .select()
