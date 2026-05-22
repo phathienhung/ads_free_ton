@@ -228,12 +228,18 @@ async function verifyTelegramTask(telegramId: string, campaign: any): Promise<bo
 
     try {
       const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getChatMember?chat_id=${chatId}&user_id=${telegramId}`);
-      const data = await res.json() as { ok: boolean; result?: { status: string } };
-      if (!data.ok) return false;
+      const data = await res.json() as { ok: boolean; description?: string; result?: { status: string } };
+      if (!data.ok) {
+        if (data.description?.includes('bot is not a member') || data.description?.includes('chat not found')) {
+          throw new Error('Lỗi hệ thống: Bot chưa được cấp quyền Admin trong Kênh/Group này để kiểm tra!');
+        }
+        return false;
+      }
       const status = data.result?.status;
       return ['member', 'administrator', 'creator'].includes(status || '');
-    } catch {
-      return false; // Do not auto-pass on error
+    } catch (e: any) {
+      if (e.message && e.message.includes('Lỗi hệ thống')) throw e;
+      return false; // Do not auto-pass on other network errors
     }
   }
 

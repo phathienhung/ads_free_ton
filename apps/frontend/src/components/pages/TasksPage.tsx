@@ -11,7 +11,7 @@ const typeIcons: Record<string, string> = {
 const typeFilters = ['ALL', 'CHANNEL', 'GROUP', 'BOT', 'WEBSITE'];
 
 export default function TasksPage() {
-  const { showReward, refreshUser } = useAppStore();
+  const { user, setUser, showReward, refreshUser } = useAppStore();
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [filter, setFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
@@ -274,6 +274,11 @@ export default function TasksPage() {
                     onClick={() => {
                       if (actionLoading) return;
                       
+                      // 0. Optimistically deduct energy in UI so it updates instantly
+                      if (user) {
+                        setUser({ ...user, energy: Math.max(0, user.energy - 1) });
+                      }
+
                       // 1. Fire startTask FIRST using keepalive fetch (survives page close)
                       api.startTaskBeacon(c.id);
                       
