@@ -163,8 +163,11 @@ app.post('/api/auth/dev-login', async (req: express.Request, res: express.Respon
       { expiresIn: '24h' }
     );
 
+    const userWithEnergy = await getUserWithEnergy(user.id).catch(() => user);
+    const finalUser = { ...user, ...userWithEnergy };
+
     res.json({
-      user: serializeUser(user),
+      user: serializeUser(finalUser),
       accessToken,
       refreshToken: accessToken,
     });

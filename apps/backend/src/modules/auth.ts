@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../lib/supabase';
+import { getUserWithEnergy } from './task';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 if (!BOT_TOKEN) throw new Error('TELEGRAM_BOT_TOKEN is not set');
@@ -244,8 +245,12 @@ export async function authenticateUser(initDataRaw: string, ipAddress?: string, 
     { expiresIn: '30d' }
   );
 
+  // Get up-to-date energy before returning
+  const userWithEnergy = await getUserWithEnergy(user.id).catch(() => user);
+  const finalUser = { ...user, ...userWithEnergy };
+
   return {
-    user: serializeUser(user),
+    user: serializeUser(finalUser),
     accessToken,
     refreshToken,
   };
