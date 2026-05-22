@@ -272,33 +272,30 @@ export default function TasksPage() {
                       textDecoration: 'none',
                       pointerEvents: isOtherProcessing ? 'none' : 'auto',
                     }}
-                    onClick={async (e) => {
+                    onClick={(e) => {
                       e.preventDefault();
                       if (actionLoading) return;
                       
-                      try {
-                        // 1. Wait for backend to record start and deduct energy
-                        await api.startTask(c.id);
-                        
-                        // 2. Update UI
-                        setStartedTasks(s => new Set(s).add(c.id));
-                        await refreshUser();
-                        
-                        // 3. Navigate using Telegram Native API to avoid popup blockers
-                        const url = c.targetUrl;
-                        if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
-                          const tg = (window as any).Telegram.WebApp;
-                          if (url.includes('t.me') || url.includes('tg://')) {
-                            tg.openTelegramLink(url);
-                          } else {
-                            tg.openLink(url);
-                          }
+                      // 1. Navigate FIRST using Telegram Native API
+                      const url = c.targetUrl;
+                      if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
+                        const tg = (window as any).Telegram.WebApp;
+                        if (url.includes('t.me') || url.includes('tg://')) {
+                          tg.openTelegramLink(url);
                         } else {
-                          window.open(url, '_blank');
+                          tg.openLink(url);
                         }
-                      } catch (err: any) {
-                        alert(err.message || 'Failed to start task. Please try again.');
+                      } else {
+                        window.open(url, '_blank');
                       }
+                      
+                      // 2. Call startTask in background AFTER navigation
+                      api.startTask(c.id).then(() => {
+                        setStartedTasks(s => new Set(s).add(c.id));
+                        refreshUser();
+                      }).catch((err: any) => {
+                        console.error('Failed to start task:', err.message);
+                      });
                     }}
                   >
                     {c.type === 'CHANNEL' || c.type === 'GROUP' ? '📢 Join' :

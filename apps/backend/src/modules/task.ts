@@ -60,13 +60,17 @@ export async function startTask(userId: string, campaignId: string, ipAddress?: 
     throw new Error('Please wait a moment before starting another task.');
   }
 
-  // Deduct energy
+  // Deduct energy and ALWAYS reset energyUpdatedAt
+  // This prevents getUserWithEnergy from immediately regenerating the deducted energy
   const currentEnergy = Number(user.energy);
+  const now = new Date().toISOString();
+
   await supabase
     .from('User')
     .update({ 
       energy: currentEnergy - TASK_ENERGY_COST,
-      updatedAt: new Date().toISOString()
+      energyUpdatedAt: now,
+      updatedAt: now
     })
     .eq('id', userId);
 
