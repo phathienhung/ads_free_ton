@@ -170,6 +170,7 @@ app.post('/api/auth/dev-login', async (req: express.Request, res: express.Respon
       user: serializeUser(finalUser),
       accessToken,
       refreshToken: accessToken,
+      serverTime: Date.now()
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -181,7 +182,10 @@ app.get('/api/user/me', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const user = await getUserWithEnergy(req.userId!);
     const { data: wallet } = await supabase.from('Wallet').select('*').eq('userId', req.userId!).single();
-    res.json(serializeUser({ ...user, wallet }));
+    res.json({
+      ...serializeUser({ ...user, wallet }),
+      serverTime: Date.now()
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

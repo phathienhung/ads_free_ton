@@ -32,8 +32,9 @@ interface AppState {
   activeTab: string;
   rewardPopup: { show: boolean; amount: string; label: string } | null;
   gameConfig: { energy: any; leveling: any; withdrawFee?: any } | null;
+  timeOffset: number; // Server time offset for clock sync
 
-  setUser: (user: User) => void;
+  setUser: (user: User, serverTime?: number) => void;
   setActiveTab: (tab: string) => void;
   showReward: (amount: string, label: string) => void;
   hideReward: () => void;
@@ -51,8 +52,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeTab: 'home',
   rewardPopup: null,
   gameConfig: null,
+  timeOffset: 0,
 
-  setUser: (user) => set({ user, isAuthenticated: true, isLoading: false }),
+  setUser: (user, serverTime) => {
+    let offset = get().timeOffset;
+    if (serverTime) {
+      offset = Date.now() - serverTime;
+    }
+    set({ user, isAuthenticated: true, isLoading: false, timeOffset: offset });
+  },
   setActiveTab: (tab) => set({ activeTab: tab }),
 
   showReward: (amount, label) => {
@@ -66,9 +74,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       set({ isLoading: true });
       if (initData) {
-        const result = await api.login(initData);
+        const result = await api.login(initData) as any;
         api.setToken(result.accessToken);
-        set({ user: result.user, isAuthenticated: true, isLoading: false });
+        get().setUser(result.user, result.serverTime);
         get().fetchConfig(); // Fetch config after login
       } else {
         set({ isLoading: false });
@@ -91,8 +99,8 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   refreshUser: async () => {
     try {
-      const user = await api.getMe();
-      set({ user });
+      const data = await api.getMe();
+      get().setUser(data, data.serverTime);
     } catch (err) {
       console.error('Refresh error:', err);
     }

@@ -24,7 +24,8 @@ export function useLiveEnergy() {
         return;
       }
 
-      const elapsedMs = Date.now() - new Date(user.energyUpdatedAt || Date.now()).getTime();
+      const serverNow = Date.now() - useAppStore.getState().timeOffset;
+      const elapsedMs = serverNow - new Date(user.energyUpdatedAt || serverNow).getTime();
       const regenIntervalMs = recoverSeconds * 1000;
       
       const regenCount = Math.floor(elapsedMs / regenIntervalMs);

@@ -25,11 +25,11 @@ export default function App() {
       const token = api.getToken();
       if (token) {
         try {
-          const [user] = await Promise.all([
+          const [data] = await Promise.all([
             api.getMe(),
             fetchConfig()
           ]);
-          useAppStore.getState().setUser(user);
+          useAppStore.getState().setUser(data, data.serverTime);
           setInitializing(false);
           return;
         } catch {

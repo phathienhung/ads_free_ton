@@ -253,6 +253,7 @@ export async function authenticateUser(initDataRaw: string, ipAddress?: string, 
     user: serializeUser(finalUser),
     accessToken,
     refreshToken,
+    serverTime: Date.now()
   };
 }
 
