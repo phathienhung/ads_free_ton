@@ -373,13 +373,34 @@ export async function getUserWithEnergy(userId: string) {
 
   let currentEnergy = user.energy;
 
-  if (regenAmount > 0 && user.energy < maxEnergy) {
+  if (user.energy >= maxEnergy) {
+    // User is at max energy. If their timestamp is old, it means they've been sitting at max.
+    // We must reset their timestamp to NOW so that when they finally spend energy,
+    // they don't instantly get it all back from the massive accumulated elapsed time!
+    if (elapsed >= regenInterval) {
+      await supabase
+        .from('User')
+        .update({ 
+          energyUpdatedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        })
+        .eq('id', userId);
+    }
+  } else if (regenAmount > 0) {
     currentEnergy = Math.min(user.energy + regenAmount, maxEnergy);
+    
+    // Preserve the remainder!
+    const remainderElapsed = elapsed % regenInterval;
+    const newTimestamp = new Date(now - remainderElapsed);
+
+    // If they hit max energy, we reset completely to NOW
+    const finalTimestamp = currentEnergy >= maxEnergy ? new Date() : newTimestamp;
+
     await supabase
       .from('User')
       .update({ 
         energy: currentEnergy,
-        energyUpdatedAt: new Date().toISOString(),
+        energyUpdatedAt: finalTimestamp.toISOString(),
         updatedAt: new Date().toISOString()
       })
       .eq('id', userId);
