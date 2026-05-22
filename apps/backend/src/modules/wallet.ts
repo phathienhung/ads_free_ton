@@ -1,6 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../lib/supabase';
 import { getGameConfig, WithdrawalFee } from '../lib/config';
+import { redis } from '../lib/redis';
+import { verifyTonTransaction } from '../lib/ton';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_CHAT_ID = '1597337885';
@@ -47,8 +49,6 @@ export async function getWallet(userId: string) {
     totalSpent: wallet.totalSpent.toString(),
   };
 }
-
-import { verifyTonTransaction } from '../lib/ton';
 
 /**
  * Deposit funds via TON Connect transaction

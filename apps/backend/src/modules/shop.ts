@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../lib/supabase';
+import { redis } from '../lib/redis';
 import { addXP } from './task';
 
 export async function getShopPackages(userId: string) {

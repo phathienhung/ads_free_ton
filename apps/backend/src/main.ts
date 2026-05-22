@@ -207,10 +207,7 @@ app.get('/api/campaigns/:id', authMiddleware, async (req: AuthRequest, res) => {
 
 app.post('/api/campaigns', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const campaign = await createCampaign({
-      advertiserId: req.userId!,
-      ...req.body,
-    });
+    const campaign = await createCampaign(req.userId!, req.body);
     res.status(201).json(campaign);
   } catch (err: any) {
     res.status(400).json({ error: err.message });

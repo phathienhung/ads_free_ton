@@ -132,7 +132,7 @@ export async function authenticateUser(initDataRaw: string, ipAddress?: string, 
           .eq('target', newCount)
           .single();
 
-        const prevMilestones = Array.isArray(referrer.milestonesAchieved) ? referrer.milestonesAchieved : [];
+        const prevMilestones = Array.isArray((referrer as any).milestonesAchieved) ? (referrer as any).milestonesAchieved : [];
         const updatedMilestones = milestoneReached 
           ? [...prevMilestones, milestoneReached.target]
           : prevMilestones;

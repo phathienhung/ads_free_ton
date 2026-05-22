@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../modules/auth';
+import { supabase } from '../lib/supabase';
 
 export interface AuthRequest extends Request {
   userId?: string;
@@ -10,7 +11,7 @@ export interface AuthRequest extends Request {
 /**
  * Middleware to verify JWT token from Authorization header
  */
-export function authMiddleware(req: AuthRequest, res: Response, next: NextFunction): void {
+export async function authMiddleware(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     res.status(401).json({ error: 'Unauthorized' });
@@ -23,7 +24,6 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
     req.userId = decoded.userId;
     req.telegramId = decoded.telegramId;
     req.userRole = decoded.role;
-    req.user = decoded;
 
     // Check if user is banned
     const { data: user, error } = await supabase.from('User').select('isBanned').eq('id', decoded.userId).single();
