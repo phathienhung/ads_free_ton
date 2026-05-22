@@ -267,27 +267,38 @@ export default function TasksPage() {
                 ) : (
                   <a
                     href={c.targetUrl}
-                    target="_blank"
-                    rel="noopener"
                     className={`btn btn-primary btn-full${isOtherProcessing ? ' disabled' : ''}`}
                     style={{
                       textDecoration: 'none',
                       pointerEvents: isOtherProcessing ? 'none' : 'auto',
                     }}
-                    onClick={(e) => {
-                      if (actionLoading) {
-                        e.preventDefault();
-                        return;
-                      }
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      if (actionLoading) return;
                       
-                      // We don't preventDefault here, so the browser natively opens the URL.
-                      // This avoids popup blockers and Telegram Webview issues.
-                      api.startTask(c.id).then(() => {
+                      try {
+                        // 1. Wait for backend to record start and deduct energy
+                        await api.startTask(c.id);
+                        
+                        // 2. Update UI
                         setStartedTasks(s => new Set(s).add(c.id));
-                        refreshUser();
-                      }).catch((err: any) => {
-                        console.error('Failed to start task:', err.message);
-                      });
+                        await refreshUser();
+                        
+                        // 3. Navigate using Telegram Native API to avoid popup blockers
+                        const url = c.targetUrl;
+                        if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
+                          const tg = (window as any).Telegram.WebApp;
+                          if (url.includes('t.me') || url.includes('tg://')) {
+                            tg.openTelegramLink(url);
+                          } else {
+                            tg.openLink(url);
+                          }
+                        } else {
+                          window.open(url, '_blank');
+                        }
+                      } catch (err: any) {
+                        alert(err.message || 'Failed to start task. Please try again.');
+                      }
                     }}
                   >
                     {c.type === 'CHANNEL' || c.type === 'GROUP' ? '📢 Join' :
