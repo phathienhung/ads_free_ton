@@ -68,7 +68,7 @@ class ApiClient {
 
   // User
   getMe() {
-    return this.request<any>('/api/user/me');
+    return this.request<any>('/api/user/me', { cache: 'no-store' });
   }
 
   // Campaigns
