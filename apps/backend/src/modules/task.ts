@@ -366,7 +366,10 @@ export async function getUserWithEnergy(userId: string) {
   const regenAmountPerInterval = config.recoverAmount || 1;
 
   const now = Date.now();
-  const elapsed = now - new Date(user.energyUpdatedAt).getTime();
+  const safeDateStr = user.energyUpdatedAt.endsWith('Z') || user.energyUpdatedAt.includes('+') 
+    ? user.energyUpdatedAt 
+    : `${user.energyUpdatedAt}Z`;
+  const elapsed = now - new Date(safeDateStr).getTime();
   const regenAmount = Math.floor(elapsed / regenInterval) * regenAmountPerInterval;
 
   const maxEnergy = user.maxEnergy || config.maxEnergy;

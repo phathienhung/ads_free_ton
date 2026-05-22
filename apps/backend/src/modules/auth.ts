@@ -273,8 +273,18 @@ export function serializeUser(user: any) {
   // Supabase might return wallet as an array if it's a join
   const walletData = Array.isArray(user.wallet) ? user.wallet[0] : user.wallet;
 
+  const ensureUTC = (str: string | undefined | null) => {
+    if (!str) return str;
+    if (str.endsWith('Z') || str.includes('+')) return str;
+    return `${str}Z`;
+  };
+
   return {
     ...user,
+    energyUpdatedAt: ensureUTC(user.energyUpdatedAt),
+    lastActiveAt: ensureUTC(user.lastActiveAt),
+    createdAt: ensureUTC(user.createdAt),
+    updatedAt: ensureUTC(user.updatedAt),
     telegramId: user.telegramId ? user.telegramId.toString() : null,
     wallet: walletData ? {
       ...walletData,
