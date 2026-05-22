@@ -13,7 +13,7 @@ export async function getLeaderboard(
   period: 'daily' | 'weekly' | 'monthly' | 'all',
   limit = 50
 ) {
-  const cacheKey = `leaderboard:${type}:${period}`;
+  const cacheKey = `leaderboard_v2:${type}:${period}`;
   const cached = await redis.get(cacheKey);
   if (cached) return JSON.parse(cached);
 

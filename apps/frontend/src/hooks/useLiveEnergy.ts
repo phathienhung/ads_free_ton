@@ -19,7 +19,7 @@ export function useLiveEnergy() {
 
     const calculateEnergy = () => {
       if (user.energy >= maxEnergy) {
-        setEnergy(maxEnergy);
+        setEnergy(user.energy);
         setCountdown('');
         return;
       }
