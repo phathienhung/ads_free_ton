@@ -298,6 +298,11 @@ export default function TasksPage() {
                     onClick={() => {
                       if (actionLoading) return;
                       
+                      if (user && user.energy < 1) {
+                        alert('Không đủ năng lượng! Vui lòng chờ năng lượng hồi phục.');
+                        return;
+                      }
+
                       // 0. Optimistically deduct energy in UI so it updates instantly
                       // We must also update energyUpdatedAt, otherwise useLiveEnergy will 
                       // immediately regenerate the energy based on the old timestamp!
