@@ -40,11 +40,15 @@ export default function TasksPage() {
       setLoading(true);
       const data = await api.getCampaigns(1);
       
+      const newStarted = new Set<string>();
       const newVerified = new Set<string>();
       const newCompleted = new Set<string>();
       
       data.campaigns.forEach((c: any) => {
-        if (c.userStatus === 'STARTED' || c.userStatus === 'VERIFIED') {
+        if (c.userStatus === 'STARTED') {
+          newStarted.add(c.id);
+        }
+        if (c.userStatus === 'VERIFIED') {
           newVerified.add(c.id);
         }
         if (c.userStatus === 'REWARDED') {
@@ -52,6 +56,7 @@ export default function TasksPage() {
         }
       });
       
+      setStartedTasks(prev => new Set([...prev, ...newStarted]));
       setVerifiedTasks(prev => new Set([...prev, ...newVerified]));
       setCompletedTasks(prev => new Set([...prev, ...newCompleted]));
       setCampaigns(data.campaigns);
@@ -189,6 +194,7 @@ export default function TasksPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {filtered.map((c, i) => {
             const isVerified = verifiedTasks.has(c.id) || completedTasks.has(c.id);
+            const isStarted = startedTasks.has(c.id) || isVerified;
             const isCompleted = completedTasks.has(c.id);
             const isProcessing = actionLoading === c.id;
             const isOtherProcessing = actionLoading !== null && actionLoading !== c.id && !actionLoading.startsWith('daily-');
@@ -250,36 +256,46 @@ export default function TasksPage() {
                   >
                     {isProcessing ? '⏳ Claiming...' : '🎁 Claim Reward'}
                   </button>
+                ) : isStarted ? (
+                  <button
+                    className="btn btn-primary btn-full"
+                    disabled={isProcessing || isOtherProcessing}
+                    onClick={() => handleVerify(c.id)}
+                  >
+                    {isProcessing ? '⏳ Checking...' : '✅ I Did It'}
+                  </button>
                 ) : (
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <a
-                      href={c.targetUrl}
-                      target="_blank"
-                      rel="noopener"
-                      className={`btn btn-ghost${isOtherProcessing ? ' disabled' : ''}`}
-                      style={{
-                        flex: 1,
-                        textDecoration: 'none',
-                        pointerEvents: isOtherProcessing ? 'none' : 'auto',
-                      }}
-                      onClick={async (e) => {
-                        if (actionLoading) { e.preventDefault(); return; }
-                        // Optimistically start the task in background
-                        await api.startTask(c.id).catch(() => {});
-                      }}
-                    >
-                      {c.type === 'CHANNEL' || c.type === 'GROUP' ? '📢 Join' :
-                       c.type === 'BOT' ? '🤖 Start Bot' : '🌐 Visit'}
-                    </a>
-                    <button
-                      className="btn btn-primary"
-                      style={{ flex: 1 }}
-                      disabled={isProcessing || isOtherProcessing}
-                      onClick={() => handleVerify(c.id)}
-                    >
-                      {isProcessing ? '⏳ Checking...' : '✅ I Did It'}
-                    </button>
-                  </div>
+                  <a
+                    href={c.targetUrl}
+                    target="_blank"
+                    rel="noopener"
+                    className={`btn btn-primary btn-full${isOtherProcessing ? ' disabled' : ''}`}
+                    style={{
+                      textDecoration: 'none',
+                      pointerEvents: isOtherProcessing ? 'none' : 'auto',
+                    }}
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      if (actionLoading) return;
+                      
+                      try {
+                        // Register start and deduct energy on backend
+                        await api.startTask(c.id);
+                        
+                        // Update UI states
+                        setStartedTasks(s => new Set(s).add(c.id));
+                        await refreshUser();
+                        
+                        // Navigate to Telegram
+                        window.open(c.targetUrl, '_blank');
+                      } catch (err: any) {
+                        alert(err.message || 'Failed to start task');
+                      }
+                    }}
+                  >
+                    {c.type === 'CHANNEL' || c.type === 'GROUP' ? '📢 Join' :
+                     c.type === 'BOT' ? '🤖 Start Bot' : '🌐 Visit'}
+                  </a>
                 )}
               </div>
             );
