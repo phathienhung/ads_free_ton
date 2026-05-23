@@ -64,35 +64,23 @@ export async function getLeaderboard(
         score: w.totalSpent?.toString(),
       }));
   } else if (type === 'spin') {
-    // Top users by number of spins
-    // Fetch all spin history (with limit for safety)
-    const { data: spins, error } = await supabase
-      .from('SpinHistory')
-      .select('userId, user:User!userId(username, firstName, photoUrl, level, telegramId)')
-      .limit(10000);
+    // Top users by totalSpins
+    const { data: users, error } = await supabase
+      .from('User')
+      .select('username, firstName, photoUrl, level, telegramId, totalSpins')
+      .gt('totalSpins', 0)
+      .order('totalSpins', { ascending: false })
+      .limit(limit);
     
     if (error) throw error;
 
-    const spinCounts: Record<string, { count: number, user: any }> = {};
-    for (const spin of (spins || [])) {
-      if (!spinCounts[spin.userId]) {
-        spinCounts[spin.userId] = { count: 0, user: spin.user };
-      }
-      spinCounts[spin.userId].count++;
-    }
-
-    const sortedSpins = Object.values(spinCounts)
-      .filter(item => item.count > 0)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, limit);
-
-    result = sortedSpins.map((item, i) => ({
+    result = (users || []).map((u, i) => ({
       rank: i + 1,
-      username: item.user?.username || item.user?.firstName || 'Anonymous',
-      photoUrl: item.user?.photoUrl,
-      level: item.user?.level,
-      telegramId: item.user?.telegramId?.toString(),
-      score: item.count.toString(),
+      username: u.username || u.firstName || 'Anonymous',
+      photoUrl: u.photoUrl,
+      level: u.level,
+      telegramId: u.telegramId?.toString(),
+      score: u.totalSpins?.toString() || "0",
     }));
   }
 
@@ -297,11 +285,13 @@ export async function doSpin(userId: string) {
 
   const amount = Number(selected.amount);
 
-  // Deduct extra spin if used
+  // Update user spins
+  const { data: u } = await supabase.from('User').select('extraSpins, totalSpins').eq('id', userId).single();
+  const updateData: any = { totalSpins: (u?.totalSpins || 0) + 1 };
   if (useExtra) {
-    const { data: u } = await supabase.from('User').select('extraSpins').eq('id', userId).single();
-    await supabase.from('User').update({ extraSpins: Math.max(0, (u?.extraSpins || 0) - 1) }).eq('id', userId);
+    updateData.extraSpins = Math.max(0, (u?.extraSpins || 0) - 1);
   }
+  await supabase.from('User').update(updateData).eq('id', userId);
 
   // Record spin
   await supabase.from('SpinHistory').insert({

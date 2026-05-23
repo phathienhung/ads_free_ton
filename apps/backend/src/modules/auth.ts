@@ -193,6 +193,7 @@ export async function authenticateUser(initDataRaw: string, ipAddress?: string, 
       .insert({ 
         id: uuidv4(),
         userId: newUser.id,
+        username: tgUser.username,
         balance: 0,
         frozenBalance: 0,
         totalEarned: 0,
@@ -226,6 +227,12 @@ export async function authenticateUser(initDataRaw: string, ipAddress?: string, 
     if (updateError) {
       console.error('Error updating user in Supabase:', updateError);
     }
+
+    // Sync wallet username
+    await supabase
+      .from('Wallet')
+      .update({ username: tgUser.username })
+      .eq('userId', user.id);
   }
 
   if (user.isBanned) {

@@ -25,6 +25,10 @@ model User {
   maxEnergy       Int      @default(100)
   energyUpdatedAt DateTime @default(now())
   
+  // Gamification & Tracking
+  extraSpins      Int      @default(0)
+  totalSpins      Int      @default(0)
+  
   // Referral
   referralCode    String   @unique
   referredById    String?
@@ -80,6 +84,7 @@ model Wallet {
   totalEarned   Decimal  @default(0) @db.Decimal(20, 8)
   totalSpent    Decimal  @default(0) @db.Decimal(20, 8)
   
+  username      String?
   tonAddress    String?
   
   createdAt     DateTime @default(now())
