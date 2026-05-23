@@ -48,16 +48,16 @@ export default function LeaderboardPage() {
       </div>
 
       {/* Top 3 Podium */}
-      {!loading && data.length >= 3 && (
+      {!loading && data.length > 0 && (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: 12, marginBottom: 24, paddingTop: 20 }}>
           {/* 2nd place */}
-          <div style={{ textAlign: 'center', flex: 1 }}>
+          <div style={{ textAlign: 'center', flex: 1, opacity: data[1] ? 1 : 0.5 }}>
             <div className="rank-avatar" style={{ width: 50, height: 50, margin: '0 auto 8px', background: 'linear-gradient(135deg, #c0c0c0, #808080)' }}>
-              {data[1].username?.charAt(0)?.toUpperCase() || '?'}
+              {data[1] ? (data[1].username?.charAt(0)?.toUpperCase() || '?') : '-'}
             </div>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>{data[1].username}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>{data[1]?.username || '---'}</div>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--accent-green)' }}>
-              {formatScore(data[1].score)}
+              {data[1] ? formatScore(data[1].score) : '-'}
             </div>
             <div style={{ background: 'linear-gradient(135deg, #c0c0c0, #808080)', height: 60, borderRadius: '8px 8px 0 0', marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontSize: 28, fontWeight: 'bold', color: 'white', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>2</span>
@@ -80,13 +80,13 @@ export default function LeaderboardPage() {
           </div>
 
           {/* 3rd place */}
-          <div style={{ textAlign: 'center', flex: 1 }}>
+          <div style={{ textAlign: 'center', flex: 1, opacity: data[2] ? 1 : 0.5 }}>
             <div className="rank-avatar" style={{ width: 50, height: 50, margin: '0 auto 8px', background: 'linear-gradient(135deg, #cd7f32, #8b4513)' }}>
-              {data[2].username?.charAt(0)?.toUpperCase() || '?'}
+              {data[2] ? (data[2].username?.charAt(0)?.toUpperCase() || '?') : '-'}
             </div>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>{data[2].username}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>{data[2]?.username || '---'}</div>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--accent-green)' }}>
-              {formatScore(data[2].score)}
+              {data[2] ? formatScore(data[2].score) : '-'}
             </div>
             <div style={{ background: 'linear-gradient(135deg, #cd7f32, #8b4513)', height: 40, borderRadius: '8px 8px 0 0', marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontSize: 24, fontWeight: 'bold', color: 'white', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>3</span>

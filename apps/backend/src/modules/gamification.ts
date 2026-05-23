@@ -13,7 +13,7 @@ export async function getLeaderboard(
   period: 'daily' | 'weekly' | 'monthly' | 'all',
   limit = 50
 ) {
-  const cacheKey = `leaderboard_v2:${type}:${period}`;
+  const cacheKey = `leaderboard_v3:${type}:${period}`;
   const cached = await redis.get(cacheKey);
   if (cached) return JSON.parse(cached);
 
@@ -26,18 +26,21 @@ export async function getLeaderboard(
       .select('*, user:User!userId(username, firstName, id, photoUrl, level, telegramId)')
       .gt('totalEarned', 0)
       .order('totalEarned', { ascending: false })
-      .limit(limit);
+      .limit(limit * 2); // Fetch more to allow manual filtering
 
     if (error) throw error;
 
-    result = (wallets || []).map((w: any, i: number) => ({
-      rank: i + 1,
-      username: w.user?.username || w.user?.firstName || 'Anonymous',
-      photoUrl: w.user?.photoUrl,
-      level: w.user?.level,
-      telegramId: w.user?.telegramId?.toString(),
-      score: w.totalEarned?.toString(),
-    }));
+    result = (wallets || [])
+      .filter((w: any) => parseFloat(w.totalEarned) >= 0.01) // Filter out < 0.01
+      .slice(0, limit)
+      .map((w: any, i: number) => ({
+        rank: i + 1,
+        username: w.user?.username || w.user?.firstName || 'Anonymous',
+        photoUrl: w.user?.photoUrl,
+        level: w.user?.level,
+        telegramId: w.user?.telegramId?.toString(),
+        score: w.totalEarned?.toString(),
+      }));
   } else if (type === 'advertiser') {
     // Top advertisers by spending
     const { data: wallets, error } = await supabase
@@ -45,36 +48,51 @@ export async function getLeaderboard(
       .select('*, user:User!userId(username, firstName, id, photoUrl, level, telegramId)')
       .gt('totalSpent', 0)
       .order('totalSpent', { ascending: false })
-      .limit(limit);
+      .limit(limit * 2);
 
     if (error) throw error;
 
-    result = (wallets || []).map((w: any, i: number) => ({
-      rank: i + 1,
-      username: w.user?.username || w.user?.firstName || 'Anonymous',
-      photoUrl: w.user?.photoUrl,
-      level: w.user?.level,
-      telegramId: w.user?.telegramId?.toString(),
-      score: w.totalSpent?.toString(),
-    }));
+    result = (wallets || [])
+      .filter((w: any) => parseFloat(w.totalSpent) >= 0.01) // Filter out < 0.01
+      .slice(0, limit)
+      .map((w: any, i: number) => ({
+        rank: i + 1,
+        username: w.user?.username || w.user?.firstName || 'Anonymous',
+        photoUrl: w.user?.photoUrl,
+        level: w.user?.level,
+        telegramId: w.user?.telegramId?.toString(),
+        score: w.totalSpent?.toString(),
+      }));
   } else if (type === 'spin') {
-    // Top users by extraSpins
-    const { data: users, error } = await supabase
-      .from('User')
-      .select('username, firstName, photoUrl, level, telegramId, extraSpins')
-      .gt('extraSpins', 0)
-      .order('extraSpins', { ascending: false })
-      .limit(limit);
+    // Top users by number of spins
+    // Fetch all spin history (with limit for safety)
+    const { data: spins, error } = await supabase
+      .from('SpinHistory')
+      .select('userId, user:User!userId(username, firstName, photoUrl, level, telegramId)')
+      .limit(10000);
     
     if (error) throw error;
 
-    result = (users || []).map((u, i) => ({
+    const spinCounts: Record<string, { count: number, user: any }> = {};
+    for (const spin of (spins || [])) {
+      if (!spinCounts[spin.userId]) {
+        spinCounts[spin.userId] = { count: 0, user: spin.user };
+      }
+      spinCounts[spin.userId].count++;
+    }
+
+    const sortedSpins = Object.values(spinCounts)
+      .filter(item => item.count > 0)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, limit);
+
+    result = sortedSpins.map((item, i) => ({
       rank: i + 1,
-      username: u.username || u.firstName || 'Anonymous',
-      photoUrl: u.photoUrl,
-      level: u.level,
-      telegramId: u.telegramId?.toString(),
-      score: u.extraSpins?.toString() || "0",
+      username: item.user?.username || item.user?.firstName || 'Anonymous',
+      photoUrl: item.user?.photoUrl,
+      level: item.user?.level,
+      telegramId: item.user?.telegramId?.toString(),
+      score: item.count.toString(),
     }));
   }
 

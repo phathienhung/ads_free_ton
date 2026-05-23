@@ -52,7 +52,7 @@ export default function ShopPage() {
         }
 
         const platformWallet = process.env.NEXT_PUBLIC_PLATFORM_WALLET || '0QAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE9X';
-        const amountNano = (remainingPrice * 1e9).toString();
+        const amountNano = Math.round(remainingPrice * 1e9).toString();
 
         const tx = {
           validUntil: Math.floor(Date.now() / 1000) + 360,
